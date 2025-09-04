@@ -3,10 +3,13 @@ import requests
 import config
 
 # Define API URL
-url = "https://v3.football.api-sports.io/leagues"
+url = "https://v3.football.api-sports.io/standings"
 
-# Define payload, body is not needed for a GET request
-payload = {}
+# Define params for query
+params = {
+    'league': 39,
+    'season': 2023
+}
 
 # Define API headers
 headers = {
@@ -15,7 +18,7 @@ headers = {
 }
 
 # Send GET request and receive response
-response = requests.request("GET", url, headers=headers, data=payload)
+response = requests.get(url, headers=headers, params=params)
 
 # Print response text
 print(response.text)
