@@ -1,0 +1,15 @@
+# Ignore virtual environment
+venv/
+
+# Ignore Python cache and bytecode
+__pycache__/
+*.py[cod]
+
+# Ignore config file with API key
+config.py
+
+# Ignore environment files
+.env
+
+# Ignore PyCharm project settings
+.idea/
