@@ -25,6 +25,8 @@ class Standing(SQLModel, table=True):
     team_id: int = Field(foreign_key="team.id")
     season_id: int = Field(foreign_key="season.id")
 
+    name: str
+    year: int
     position: int
     points: int
     goals_for: int

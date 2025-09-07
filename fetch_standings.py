@@ -4,6 +4,7 @@ from sqlmodel import Session, select, SQLModel
 import requests
 from rich.console import Console
 from rich.progress import track
+from tabulate import tabulate
 
 # Import modules
 from models import Team, Season, Standing
@@ -89,6 +90,8 @@ def fetch_season(league_id: int, year: int):
             standing = Standing(
                 team_id=team.id,
                 season_id=season.id,
+                year=season.year,
+                name=team_entry['team']['name'],
                 position=team_entry['rank'],
                 points=team_entry['points'],
                 goals_for=stats['goals']['for'],
@@ -144,6 +147,47 @@ def list_team():
         console.print("\n[bold]Teams in database:[/bold]")
         for team in teams:
             console.print(f'ID: {team.id} - {team.name} (API ID: {team.api_id})')
+
+@app.command()
+def list_standings(season_year):
+    with Session(engine) as session:
+        standings = session.exec(
+            select(Standing).where(Standing.year == season_year).order_by(Standing.position)
+        ).all()
+
+        if not standings:
+            console.print("No standings found in database.", style="yellow")
+            return
+
+        data = []
+        for standing in standings:
+            data.append([
+                standing.position,
+                standing.name,
+                standing.played,
+                standing.wins,
+                standing.draws,
+                standing.losses,
+                standing.goals_for,
+                standing.goals_against,
+                standing.goal_diff,
+                standing.points
+            ])
+        headers = [
+            "",
+            "Team",
+            "GP",
+            "W",
+            "D",
+            "L",
+            "F",
+            "A",
+            "GD",
+            "P"
+        ]
+
+        console.print(f"\n[bold]Standings for {standings[0].year} Premier League.")
+        print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 
 if __name__ == "__main__":
