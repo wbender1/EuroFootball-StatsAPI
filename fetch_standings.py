@@ -43,6 +43,7 @@ def fetch_season(league_id: int, year: int):
 
     if data.get('results', 0) == 0:
         console.print("No data returned from API.", style="red")
+        console.print(data['errors'])
         return
 
     # Process data
@@ -88,7 +89,8 @@ def fetch_season(league_id: int, year: int):
 
             # Create standings entry
             standing = Standing(
-                team_id=team.id,
+                competition=data['response'][0]['league']['name'],
+                team_id=team.api_id,
                 season_id=season.id,
                 year=season.year,
                 name=team_entry['team']['name'],

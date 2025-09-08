@@ -4,8 +4,7 @@ from typing import Optional
 
 # Define Team Model
 class Team(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    api_id: int = Field(unique=True)
+    api_id: int = Field(default=None, primary_key=True)
     name: str
     short_name: Optional[str] = None
     logo_url: Optional[str] = None
@@ -22,7 +21,8 @@ class Season(SQLModel, table=True):
 class Standing(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    team_id: int = Field(foreign_key="team.id")
+    competition: str
+    team_id: int = Field(foreign_key="team.api_id")
     season_id: int = Field(foreign_key="season.id")
 
     name: str
@@ -52,3 +52,4 @@ class Standing(SQLModel, table=True):
     away_losses: int
 
     __table_args = (UniqueConstraint("team_id", "season_id"),)
+

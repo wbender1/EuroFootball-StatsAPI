@@ -13,3 +13,6 @@ config.py
 
 # Ignore PyCharm project settings
 .idea/
+
+# Ignore test json files
+json_files/
