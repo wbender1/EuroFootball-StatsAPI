@@ -3,13 +3,13 @@ import requests
 import config
 
 # Define API URL
-url = "https://v3.football.api-sports.io/fixtures"
+url = "https://v3.football.api-sports.io/teams"
 
 # Define params for query
 params = {
-    'league': 39,
-    'season': 2023,
-
+    #'id': 39,
+    #'season': 2023,
+    'country': 'England'
 }
 
 # Define API headers

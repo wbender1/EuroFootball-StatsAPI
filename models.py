@@ -1,32 +1,58 @@
 # Import libraries
+from sqlalchemy import Boolean
 from sqlmodel import SQLModel, Field, UniqueConstraint
 from typing import Optional
 
+# Define Country Model
+class Country(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    country_name: str = Field(unique=True)
+    num_comps: int
+    code: str
+    flag: str
+
+# Define Competition Model
+class Competition(SQLModel, table=True):
+    comp_api_id: int = Field(primary_key=True)
+    comp_country_id: int = Field(foreign_key="country.id")
+    comp_name: str
+    comp_type: str
+    comp_logo: str
+
+# Define Venue Model
+class Venue(SQLModel, table=True):
+    venue_api_id: int = Field(primary_key=True)
+    name: str
+    address: str
+    city: str
+    capacity: int
+    surface: str
+    image: str
+
 # Define Team Model
 class Team(SQLModel, table=True):
-    api_id: int = Field(default=None, primary_key=True)
+    team_api_id: int = Field(primary_key=True)
     name: str
-    short_name: Optional[str] = None
-    logo_url: Optional[str] = None
+    short_name: str
+    country: str
+    founded: int
+    national: bool
+    logo_url: str
+    venue_id: int = Field(foreign_key="venue.venue_api_id", unique=True)
 
 # Define Season Model
 class Season(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     year: int
-    league_id: int
-    league_name: str
+    league_id: int = Field(foreign_key="competition.comp_api_id")
     __table_args__ = (UniqueConstraint("year", "league_id"),)
 
 # Define Standing Model, links Team and Season
 class Standing(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-
-    competition: str
-    team_id: int = Field(foreign_key="team.api_id")
+    team_id: int = Field(foreign_key="team.team_api_id")
     season_id: int = Field(foreign_key="season.id")
 
-    name: str
-    year: int
     position: int
     points: int
     goals_for: int
@@ -51,5 +77,5 @@ class Standing(SQLModel, table=True):
     away_draws: int
     away_losses: int
 
-    __table_args = (UniqueConstraint("team_id", "season_id"),)
+    __table_args__ = (UniqueConstraint("team_id", "season_id"),)
 

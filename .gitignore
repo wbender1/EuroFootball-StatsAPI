@@ -14,5 +14,8 @@ config.py
 # Ignore PyCharm project settings
 .idea/
 
-# Ignore test json files
+# Ignore test files
 json_files/
+main.py
+database.db
+fetch_standings.py
