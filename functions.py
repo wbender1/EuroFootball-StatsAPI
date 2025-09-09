@@ -8,6 +8,7 @@ from tabulate import tabulate
 
 # Import modules
 from models import Country, Competition, Venue, Team, Season, Standing
+from display_utils import print_standings_table
 from database import engine
 import config
 
@@ -26,7 +27,7 @@ def init_db():
 def fetch_season(input_country_name: str, league_id: int, year: int):
 
     # Fetch Country and Competitions first
-    console.print(f'Fetching {input_country_name} competitions.', style="blue")
+    console.print(f'Fetching {input_country_name} competitions data from API.', style="blue")
     # API Request Setup
     comps_url = "https://v3.football.api-sports.io/leagues"
     headers = {
@@ -49,7 +50,7 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
 
 
     # Fetch Teams and Venues second
-    console.print(f'Fetching teams for {year} season with league ID {league_id}.', style="blue")
+    console.print(f'Fetching teams & venue data for {year} season with league ID {league_id}.', style="blue")
     # API Request Setup
     teams_url = "https://v3.football.api-sports.io/teams"
     params = {'league': league_id,
@@ -69,7 +70,7 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
 
 
     # Fetch Standings last
-    console.print(f'Fetching {year} season for league ID {league_id}.', style="blue")
+    console.print(f'Fetching standings data for {year} season with league ID {league_id}.', style="blue")
     # Api Request Setup
     standings_url = "https://v3.football.api-sports.io/standings"
     params = {'league': league_id,
@@ -92,13 +93,13 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
     with Session(engine) as session:
 
         # Create or get Country
-        country_name = comps_data['parameters']['country']
         country_stmt = select(Country).where(
             Country.country_name == input_country_name
         )
         country = session.exec(country_stmt).first()
         if not country:
             country_data = comps_data['response'][0]['country']
+            country_name = comps_data['parameters']['country']
             country = Country(country_name=country_name,
                               num_comps=comps_data['results'],
                               code=country_data['code'],
@@ -107,6 +108,8 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
             session.commit()
             session.refresh(country)
             console.print(f'Created new Country: {country_name}.', style="green")
+        else:
+            console.print(f'Country found in records: {Country.country_name}.', style="green")
 
         # Process each Competition in Country
         comps = comps_data['response']
@@ -130,7 +133,10 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
                 session.refresh(comp)
                 console.print(f'Created new Competition: {comp.comp_name}', style="green")
 
-        console.print(f'Successfully added {num_comps_added} competitions for {country_name}!', style="bold green")
+        if len(num_comps_added) > 0:
+            console.print(f'Successfully added {num_comps_added} competitions for {country_name}!', style="bold green")
+        else:
+            console.print(f'No new competitions added for {country_name}!', style="bold green")
 
         # Create or get season
         season_stmt = select(Season).where(
@@ -206,11 +212,9 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
             stats = team_entry['all']
             home_stats = team_entry['home']
             away_stats = team_entry['away']
-
             # Find or create the team
             team_stmt = select(Team).where(Team.team_api_id == team_info['id'])
             team = session.exec(team_stmt).first()
-
             # Create standings entry
             standing = Standing(
                 team_id=team.team_api_id,
@@ -244,6 +248,17 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
 
         session.commit()
         console.print(f'Successfully added {num_standings_entries_added} standings entries for {year} season!', style="bold green")
+
+    # Print Standings table
+    console.print(f'Displaying standings for {year} season.', style="bold green")
+    print_standings_table(session, league_id, year)
+
+
+# Show Standings function
+@app.command()
+def show_standings(league_id: int, year: int):
+    with Session(engine) as session:
+        print_standings_table(session, league_id, year)
 
 
 # Run App
