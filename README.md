@@ -3,7 +3,7 @@
 A python script to fetch and analyze data from the API-Sports.io API.
 
 ## Features
-* Fetches Country, League, Venue, Team, Season, and Standings data.
+* Fetch the Competitions for a Country and adds the Teams, Venues, and Standings for 1 Season.
 * Stores data in local database.
 
 ## Setup
@@ -13,5 +13,4 @@ A python script to fetch and analyze data from the API-Sports.io API.
 
 ## Usage
 1. Use `python functions.py init-db` to initialize the database.
-2. To add the competitions for a country, use `python functions.py fetch-comps COUNTRY_NAME`.
-3. Add the teams, venues, and standings for a specific season for one of the added leagues: `python functions.py fetch-season LEAGUE_ID LEAGUE_YEAR`.
+2. There is one function to add all associated data for a season: `python functions.py fetch-season COUNTRY_NAME LEAGUE_ID LEAGUE_YEAR`.
