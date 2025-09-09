@@ -4,7 +4,6 @@ from sqlmodel import Session, select, delete, SQLModel
 import requests
 from rich.console import Console
 from rich.progress import track
-from tabulate import tabulate
 
 # Import modules
 from models import Country, Competition, Venue, Team, Season, Standing

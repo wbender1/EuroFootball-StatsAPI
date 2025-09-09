@@ -1,4 +1,5 @@
 # Import libraries
+from markdown_it.rules_block import table
 from sqlalchemy import Boolean
 from sqlmodel import SQLModel, Field, UniqueConstraint
 from typing import Optional
@@ -12,7 +13,7 @@ class Country(SQLModel, table=True):
     code: str
     flag: str
 
-# Define Competition Model
+# Define Competition Model, links to Country
 class Competition(SQLModel, table=True):
     comp_api_id: int = Field(primary_key=True)
     comp_country_id: int = Field(foreign_key="country.id")
@@ -30,7 +31,7 @@ class Venue(SQLModel, table=True):
     surface: str
     image: str
 
-# Define Team Model
+# Define Team Model, links to Venue
 class Team(SQLModel, table=True):
     team_api_id: int = Field(primary_key=True)
     name: str
@@ -41,19 +42,18 @@ class Team(SQLModel, table=True):
     logo_url: str
     venue_id: int = Field(foreign_key="venue.venue_api_id", unique=True)
 
-# Define Season Model
+# Define Season Model, links to Competition
 class Season(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     year: int
     league_id: int = Field(foreign_key="competition.comp_api_id")
     __table_args__ = (UniqueConstraint("year", "league_id"),)
 
-# Define Standing Model, links Team and Season
+# Define Standing Model, links to Team and Season
 class Standing(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     team_id: int = Field(foreign_key="team.team_api_id")
     season_id: int = Field(foreign_key="season.id")
-
     position: int
     points: int
     goals_for: int
@@ -80,7 +80,7 @@ class Standing(SQLModel, table=True):
 
     __table_args__ = (UniqueConstraint("team_id", "season_id"),)
 
-# Define a Fixture Model, links Season, Teams, Venue, and Competition
+# Define a Fixture Model, links to Season, Team (both), Venue, and Competition
 class Fixture(SQLModel, table=True):
     id: int = Field(primary_key=True)
     # Relationships: Fixture is many, other models are one
@@ -105,4 +105,27 @@ class Fixture(SQLModel, table=True):
     pen_home_goals: int
     pen_away_goals: int
 
+# Define a FixtureStats Model, links to Fixture and Team (one)
+class FixtureStats(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    fixture_id: int = Field(foreign_key="fixture.id")
+    team_id: int = Field(foreign_key="team.team_api_id")
+    sh_on_goal: int
+    sh_off_goal: int
+    total_sh: int
+    blocked_sh: int
+    sh_inside: int
+    sh_outside: int
+    fouls: int
+    corners: int
+    offsides: int
+    possession: str
+    yellows: Optional[int] = Field(default=None)
+    reds: Optional[int] = Field(default=None)
+    saves: int
+    tot_passes: int
+    accurate_pass: int
+    percent_pass: str
+    ex_goals: str
 
+    __table_args__ = (UniqueConstraint("fixture_id", "team_id"),)
