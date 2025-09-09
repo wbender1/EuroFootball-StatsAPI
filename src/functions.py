@@ -97,9 +97,9 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
             Country.country_name == input_country_name
         )
         country = session.exec(country_stmt).first()
+        country_name = comps_data['parameters']['country']
         if not country:
             country_data = comps_data['response'][0]['country']
-            country_name = comps_data['parameters']['country']
             country = Country(country_name=country_name,
                               num_comps=comps_data['results'],
                               code=country_data['code'],
@@ -109,7 +109,7 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
             session.refresh(country)
             console.print(f'Created new Country: {country_name}.', style="green")
         else:
-            console.print(f'Country found in records: {Country.country_name}.', style="green")
+            console.print(f'Country found in records: {country_name}.', style="green")
 
         # Process each Competition in Country
         comps = comps_data['response']
@@ -133,7 +133,7 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
                 session.refresh(comp)
                 console.print(f'Created new Competition: {comp.comp_name}', style="green")
 
-        if len(num_comps_added) > 0:
+        if num_comps_added > 0:
             console.print(f'Successfully added {num_comps_added} competitions for {country_name}!', style="bold green")
         else:
             console.print(f'No new competitions added for {country_name}!', style="bold green")

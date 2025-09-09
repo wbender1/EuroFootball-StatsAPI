@@ -16,6 +16,8 @@ config.py
 
 # Ignore test files
 json_files/
-main.py
+test_codes/
 database.db
-fetch_standings.py
+
+# Ignore Model Planning
+/model_planning

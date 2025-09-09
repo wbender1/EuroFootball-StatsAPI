@@ -2,6 +2,7 @@
 from sqlalchemy import Boolean
 from sqlmodel import SQLModel, Field, UniqueConstraint
 from typing import Optional
+from datetime import datetime
 
 # Define Country Model
 class Country(SQLModel, table=True):
@@ -78,4 +79,30 @@ class Standing(SQLModel, table=True):
     away_losses: int
 
     __table_args__ = (UniqueConstraint("team_id", "season_id"),)
+
+# Define a Fixture Model, links Season, Teams, Venue, and Competition
+class Fixture(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    # Relationships: Fixture is many, other models are one
+    season_id: int = Field(foreign_key="season.id") # Many-to-one
+    home_team_id: int = Field(foreign_key="team.team_api_id") # Many-to-one
+    away_team_id: int = Field(foreign_key="team.team_api_id") # Many-to-one
+    venue_id: int = Field(foreign_key="venue.venue_api_id") # Many-to-one
+    competition_id: int = Field(foreign_key="competition.comp_api_id") # Many-to-one
+    referee: str
+    date: datetime
+    short_status: str
+    elapsed: int
+    round: str
+    home_goals: int
+    away_goals: int
+    half_home_goals: int
+    half_away_goals: int
+    full_home_goals: int
+    full_away_goals: int
+    et_home_goals: int
+    et_away_goals: int
+    pen_home_goals: int
+    pen_away_goals: int
+
 
