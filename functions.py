@@ -91,7 +91,7 @@ def fetch_comps(input_country_name: str):
 
 # Create Venues & Teams
 @app.command()
-def fetch_teams(league_id: int, year: int):
+def fetch_season(league_id: int, year: int):
     console.print(f'Fetching  teams for {year} season with league ID {league_id}.', style="blue")
 
     # API Request Setup
@@ -157,9 +157,7 @@ def fetch_teams(league_id: int, year: int):
 
     console.print(f'Successfully added {len(teams_data)} teams and venues for {year} season!', style="bold green")
 
-# Create Seasons and Standings
-@app.command()
-def fetch_standings(league_id: int, year: int):
+    # Add Standings data
     console.print(f'Fetching {year} season for league ID {league_id}.', style="blue")
 
     # Api Request Setup
@@ -247,7 +245,6 @@ def fetch_standings(league_id: int, year: int):
         session.commit()
 
     console.print(f'Successfully added {len(standings_data)} teams for {year} season!', style="bold green")
-
 
 # Run App
 if __name__ == "__main__":
