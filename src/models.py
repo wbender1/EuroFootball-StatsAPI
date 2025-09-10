@@ -100,10 +100,10 @@ class Fixture(SQLModel, table=True):
     half_away_goals: int
     full_home_goals: int
     full_away_goals: int
-    et_home_goals: int
-    et_away_goals: int
-    pen_home_goals: int
-    pen_away_goals: int
+    et_home_goals: Optional[int] = Field(default=None)
+    et_away_goals: Optional[int] = Field(default=None)
+    pen_home_goals: Optional[int] = Field(default=None)
+    pen_away_goals: Optional[int] = Field(default=None)
 
 # Define a FixtureStats Model, links to Fixture and Team (one)
 class FixtureStats(SQLModel, table=True):

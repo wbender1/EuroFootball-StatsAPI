@@ -4,9 +4,10 @@ from sqlmodel import Session, select, delete, SQLModel
 import requests
 from rich.console import Console
 from rich.progress import track
+from datetime import datetime
 
 # Import modules
-from models import Country, Competition, Venue, Team, Season, Standing
+from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
 from display_utils import print_standings_table
 from database import engine
 import config
@@ -259,6 +260,86 @@ def show_standings(league_id: int, year: int):
     with Session(engine) as session:
         print_standings_table(session, league_id, year)
 
+
+# Fetch Fixtures
+@app.command()
+def fetch_fixtures(league_id: int, year: int):
+
+    # Fetch Fixtures
+    console.print(f'Fetching fixture data for {year} season with league ID {league_id}.', style="blue")
+    # Api Request Setup
+    standings_url = "https://v3.football.api-sports.io/fixtures"
+    headers = {
+        'x-rapidapi-key': config.API_KEY,
+        'x-rapidapi-host': 'v3.football.api-sports.io'
+    }
+    params = {'league': league_id,
+              'season': year}
+    # Try API Request and use error handling
+    try:
+        response = requests.get(standings_url, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+    except requests.exceptions.RequestException as e:
+        console.print(f'API Request failed: {e}', style="red")
+        return
+    if data.get('results', 0) == 0:
+        console.print("No data returned from API.", style="red")
+        console.print(data['errors'])
+        return
+
+    # Process Data
+    with Session(engine) as session:
+        fixture_data = data['response']
+        num_comps_added = 0
+        # Get Season
+        season_stmt = select(Season).where((Season.year == year) & (Season.league_id == league_id))
+        season = session.exec(season_stmt).first()
+        # Get Competition
+        comp_stmt = select(Competition).where(Competition.comp_api_id == league_id)
+        competition = session.exec(comp_stmt).first()
+        num_fixtures_added = 0
+        for entry in track(fixture_data, description="Processing Fixtures."):
+            fixture_id = entry['fixture']['id']
+            fixture_data = entry['fixture']
+            score_data = entry['score']
+            # Find or create Fixture
+            fixture_stmt = select(Fixture).where(Fixture.id == fixture_id)
+            fixture = session.exec(fixture_stmt).first()
+            if not fixture:
+                fixture = Fixture(
+                    id=fixture_id,
+                    season_id=season.id,
+                    home_team_id=entry['teams']['home']['id'],
+                    away_team_id=entry['teams']['away']['id'],
+                    venue_id=entry['fixture']['venue']['id'],
+                    competition_id=competition.comp_api_id,
+                    referee=fixture_data['referee'],
+                    date=datetime.fromisoformat(fixture_data['date']),
+                    short_status=fixture_data['status']['short'],
+                    elapsed=fixture_data['status']['elapsed'],
+                    round=entry['league']['round'],
+                    home_goals=entry['goals']['home'],
+                    away_goals=entry['goals']['away'],
+                    half_home_goals=entry['score']['halftime']['home'],
+                    half_away_goals=entry['score']['halftime']['away'],
+                    full_home_goals=entry['score']['fulltime']['home'],
+                    full_away_goals=entry['score']['fulltime']['away'],
+                    et_home_goals=entry['score']['extratime']['home'],
+                    et_away_goals=entry['score']['extratime']['away'],
+                    pen_home_goals=entry['score']['penalty']['home'],
+                    pen_away_goals=entry['score']['penalty']['away']
+                )
+                num_fixtures_added += 1
+                session.add(fixture)
+                session.commit()
+                session.refresh(fixture)
+                console.print(f'Created new Fixture: {entry['teams']['home']['name']} vs. {entry['teams']['away']['name']}', style="green")
+
+        if num_fixtures_added > 0:
+            console.print(f'Successfully added {num_fixtures_added} fixtures for {year} {entry['league']['name']}!', style="bold green")
+        else:
+            console.print(f'No new competitions added for {year} {entry['league']['name']}!', style="bold green")
 
 # Run App
 if __name__ == "__main__":
