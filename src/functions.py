@@ -8,7 +8,7 @@ from datetime import datetime
 
 # Import modules
 from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
-from display_utils import print_standings_table
+from display_utils import print_standings_table, print_fixtures
 from database import engine
 import config
 
@@ -22,11 +22,10 @@ def init_db():
     SQLModel.metadata.create_all(engine)
     console.print("Database tables created!", style="green")
 
-# Fetch the Competitions for a Country and add the Teams, Venues, and Standings for 1 Season
+# Fetch Competitions and Create Country
 @app.command()
-def fetch_season(input_country_name: str, league_id: int, year: int):
-
-    # Fetch Country and Competitions first
+def fetch_competitions(input_country_name: str):
+    # Fetch Country and Competitions
     console.print(f'Fetching {input_country_name} competitions data from API.', style="blue")
     # API Request Setup
     comps_url = "https://v3.football.api-sports.io/leagues"
@@ -47,51 +46,8 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
         console.print('No data returned from API.', style="red")
         console.print(comps_data['error'])
         return
-
-
-    # Fetch Teams and Venues second
-    console.print(f'Fetching teams & venue data for {year} season with league ID {league_id}.', style="blue")
-    # API Request Setup
-    teams_url = "https://v3.football.api-sports.io/teams"
-    params = {'league': league_id,
-              'season': year}
-    # Try API Request and user error handling
-    try:
-        response = requests.get(teams_url, headers=headers, params=params)
-        response.raise_for_status()
-        teams_data = response.json()
-    except requests.exceptions.RequestException as e:
-        console.print(f'API Request failed: {e}', style="red")
-        return
-    if teams_data.get('results', 0) == 0:
-        console.print('No data returned from API.', style="red")
-        console.print(teams_data['error'])
-        return
-
-
-    # Fetch Standings last
-    console.print(f'Fetching standings data for {year} season with league ID {league_id}.', style="blue")
-    # Api Request Setup
-    standings_url = "https://v3.football.api-sports.io/standings"
-    params = {'league': league_id,
-              'season': year}
-    # Try API Request and use error handling
-    try:
-        response = requests.get(standings_url, headers=headers, params=params)
-        response.raise_for_status()
-        standings_data = response.json()
-    except requests.exceptions.RequestException as e:
-        console.print(f'API Request failed: {e}', style="red")
-        return
-    if standings_data.get('results', 0) == 0:
-        console.print("No data returned from API.", style="red")
-        console.print(standings_data['errors'])
-        return
-
-
     # Process Data
     with Session(engine) as session:
-
         # Create or get Country
         country_stmt = select(Country).where(
             Country.country_name == input_country_name
@@ -110,7 +66,6 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
             console.print(f'Created new Country: {country_name}.', style="green")
         else:
             console.print(f'Country found in records: {country_name}.', style="green")
-
         # Process each Competition in Country
         comps = comps_data['response']
         num_comps_added = 0
@@ -132,42 +87,63 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
                 session.commit()
                 session.refresh(comp)
                 console.print(f'Created new Competition: {comp.comp_name}', style="green")
-
+        # Print Console Output
         if num_comps_added > 0:
             console.print(f'Successfully added {num_comps_added} competitions for {country_name}!', style="bold green")
         else:
             console.print(f'No new competitions added for {country_name}!', style="bold green")
 
+
+# Fetch Venues and Teams while Creating Season
+@app.command()
+def fetch_teams(league_id: int, year: int):
+    # Fetch Teams and Venues
+    console.print(f'Fetching teams & venue data for {year} season with league ID {league_id}.', style="blue")
+    # API Request Setup
+    teams_url = "https://v3.football.api-sports.io/teams"
+    headers = {
+        'x-rapidapi-key': config.API_KEY,
+        'x-rapidapi-host': 'v3.football.api-sports.io'
+    }
+    params = {'league': league_id,
+              'season': year}
+    # Try API Request and user error handling
+    try:
+        response = requests.get(teams_url, headers=headers, params=params)
+        response.raise_for_status()
+        teams_data = response.json()
+    except requests.exceptions.RequestException as e:
+        console.print(f'API Request failed: {e}', style="red")
+        return
+    if teams_data.get('results', 0) == 0:
+        console.print('No data returned from API.', style="red")
+        console.print(teams_data['error'])
+        return
+    # Process Data
+    with Session(engine) as session:
         # Create or get season
         season_stmt = select(Season).where(
             (Season.year == year) & (Season.league_id == league_id)
         )
         season = session.exec(season_stmt).first()
         if not season:
-            season = Season(year=year, league_id=league_id)
+            season = Season(year=year, league_id=league_id, total_teams=0)
             session.add(season)
             session.commit()
             session.refresh(season)
             console.print(f'Created new season. League ID: {league_id}. Year: {year}', style="green")
         else:
-            console.print(f'Found season in records. League ID: {league_id}. Year: {year}', style="green")
-            standings_query = select(Standing).where(
-                Standing.season_id == season.id
-            )
-            existing_standings = session.exec(standings_query).all()
-            num_standings = len(existing_standings)
-            if num_standings == 20:
-                console.print(f'Season already has full standings records. Skipping and ending program.', style="yellow")
+            if season.total_teams > 0:
+                console.print(f'Found season in records. League ID: {league_id}. Year: {year}. Contains {season.teams_added} Teams',
+                    style="green")
+                console.print(f'No teams will be added... ending program', style="green")
                 return
             else:
-                console.print(f'Found {num_standings} standings records. Proceeding to clear season standings and add fresh records.', style="yellow")
-                delete_stmt = delete(Standing).where(Standing.season_id == season.id)
-                session.exec(delete_stmt)
-                console.print(f'Deleted existing standings for {season.year}.', style="yellow")
-
+                console.print(f'Found season in records. League ID: {league_id}. Year: {year}. Contains 0 Teams',
+                              style="green")
         # Process each Venue and Team in Response
         teams_response = teams_data['response']
-        num_venues_added = 0
+        teams_added = 0
         for entry in track(teams_response, description="Processing Venues and Teams."):
             venue_data = entry['venue']
             team_data = entry['team']
@@ -175,17 +151,30 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
             venue = session.exec(venue_stmt).first()
             if not venue:
                 # Create Venue
-                venue = Venue(
-                    venue_api_id=venue_data['id'],
-                    name=venue_data['name'],
-                    address=venue_data['address'],
-                    city=venue_data['city'],
-                    capacity=venue_data['capacity'],
-                    surface=venue_data['surface'],
-                    image=venue_data['image']
-                )
-                session.add(venue)
-                session.flush()
+                if venue_data['id'] == None:
+                    venue = Venue(
+                        venue_api_id= -1 * team_data['id'],
+                        name=None,
+                        address=None,
+                        city=None,
+                        capacity=None,
+                        surface=None,
+                        image=None
+                    )
+                    session.add(venue)
+                    session.flush()
+                else:
+                    venue = Venue(
+                        venue_api_id=venue_data['id'],
+                        name=venue_data['name'],
+                        address=venue_data['address'],
+                        city=venue_data['city'],
+                        capacity=venue_data['capacity'],
+                        surface=venue_data['surface'],
+                        image=venue_data['image']
+                    )
+                    session.add(venue)
+                    session.flush()
                 # Create Team
                 team = Team(
                     team_api_id=team_data['id'],
@@ -198,60 +187,159 @@ def fetch_season(input_country_name: str, league_id: int, year: int):
                     venue_id=venue.venue_api_id
                 )
                 session.add(team)
+                teams_added += 1
                 session.commit()
-                num_venues_added += 1
                 console.print(f'Created new team: {team.name}. Venue: {venue.name}', style="green")
+            season.total_teams += 1
+            session.commit()
 
-        console.print(f'Successfully added {num_venues_added} teams and venues!', style="bold green")
+        if teams_added > 0:
+            console.print(f'Successfully added {teams_added} teams and venues!', style="bold green")
+        else:
+            console.print(f'No new teams or venues were added to {year} with League ID: {league_id}!',
+                          style="bold green")
+            console.print(f'There are {season.total_teams} in year {year} with League ID: {league_id}!',
+                          style="bold green")
 
-        # Process each team in standings
-        standings_response = standings_data['response'][0]['league']['standings'][0]
-        num_standings_entries_added = 0
-        for team_entry in track(standings_response, description="Processing teams."):
-            team_info = team_entry['team']
-            stats = team_entry['all']
-            home_stats = team_entry['home']
-            away_stats = team_entry['away']
-            # Find or create the team
-            team_stmt = select(Team).where(Team.team_api_id == team_info['id'])
-            team = session.exec(team_stmt).first()
-            # Create standings entry
-            standing = Standing(
-                team_id=team.team_api_id,
-                season_id=season.id,
-                position=team_entry['rank'],
-                points=team_entry['points'],
-                goals_for=stats['goals']['for'],
-                goals_against=stats['goals']['against'],
-                goal_diff=(stats['goals']['for'] - stats['goals']['against']),
-                played=stats['played'],
-                wins=stats['win'],
-                draws=stats['draw'],
-                losses=stats['lose'],
-                home_goals_for=home_stats['goals']['for'],
-                home_goals_against=home_stats['goals']['against'],
-                home_goal_diff=(home_stats['goals']['for'] - home_stats['goals']['against']),
-                home_played=home_stats['played'],
-                home_wins=home_stats['win'],
-                home_draws=home_stats['draw'],
-                home_losses=home_stats['lose'],
-                away_goals_for=away_stats['goals']['for'],
-                away_goals_against=away_stats['goals']['against'],
-                away_goal_diff=(away_stats['goals']['for'] - away_stats['goals']['against']),
-                away_played=away_stats['played'],
-                away_wins=away_stats['win'],
-                away_draws=away_stats['draw'],
-                away_losses=away_stats['lose'],
+
+# Fetch Standings for a Season
+@app.command()
+def fetch_standings(league_id: int, year: int):
+    with Session(engine) as session:
+        # Find Season ID
+        season_stmt = select(Season).where(
+            (Season.league_id == league_id) & (Season.year == year)
+        )
+        season = session.exec(season_stmt).first()
+        if not season:
+            console.print(f'There is no season in database for the year {year} with League ID: {league_id}.',
+                          style="yellow")
+            console.print('Please add the required season & teams before adding standings data.',
+                          style="yellow")
+            return
+        # Find Competition
+        comp_stmt = select(Competition).where(Competition.comp_api_id == season.league_id)
+        comp = session.exec(comp_stmt).first()
+        if not comp:
+            console.print(f'There is no Competition with ID: {league_id}',
+                          style="yellow")
+            console.print("Please add the required competition before adding standings data.",
+                          style="yellow")
+            return
+    # Fetch Standings if league
+        if comp.comp_type == 'League':
+            console.print(f'Fetching standings data for {year} season with league ID {league_id}.', style="blue")
+            # Api Request Setup
+            standings_url = "https://v3.football.api-sports.io/standings"
+            headers = {
+                'x-rapidapi-key': config.API_KEY,
+                'x-rapidapi-host': 'v3.football.api-sports.io'
+            }
+            params = {'league': league_id,
+                      'season': year}
+            # Try API Request and use error handling
+            try:
+                response = requests.get(standings_url, headers=headers, params=params)
+                response.raise_for_status()
+                standings_data = response.json()
+            except requests.exceptions.RequestException as e:
+                console.print(f'API Request failed: {e}', style="red")
+                return
+            if standings_data.get('results', 0) == 0:
+                console.print("No data returned from API.", style="red")
+                console.print(standings_data['errors'])
+                return
+            # Checks Standings records
+            standings_query = select(Standing).where(
+                Standing.season_id == season.id
             )
-            session.add(standing)
-            num_standings_entries_added += 1
+            existing_standings = session.exec(standings_query).all()
+            num_standings = len(existing_standings)
+            if num_standings == 20:
+                console.print(f'Season already has full standings records. Skipping and ending program.',
+                              style="yellow")
+                return
+            else:
+                console.print(
+                    f'Found {num_standings} standings records. Proceeding to clear season standings and add fresh records.',
+                    style="yellow")
+                delete_stmt = delete(Standing).where(Standing.season_id == season.id)
+                session.exec(delete_stmt)
+                console.print(f'Deleted existing standings for {season.year}.', style="yellow")
 
-        session.commit()
-        console.print(f'Successfully added {num_standings_entries_added} standings entries for {year} season!', style="bold green")
+            # Process Data
+            standings_response = standings_data['response'][0]['league']['standings'][0]
+            num_standings_entries_added = 0
+            # Process each team in standings
+            for team_entry in track(standings_response, description="Processing teams."):
+                team_info = team_entry['team']
+                stats = team_entry['all']
+                home_stats = team_entry['home']
+                away_stats = team_entry['away']
+                # Find or create the team
+                team_stmt = select(Team).where(Team.team_api_id == team_info['id'])
+                team = session.exec(team_stmt).first()
+                # Create standings entry
+                standing = Standing(
+                    team_id=team.team_api_id,
+                    season_id=season.id,
+                    position=team_entry['rank'],
+                    points=team_entry['points'],
+                    goals_for=stats['goals']['for'],
+                    goals_against=stats['goals']['against'],
+                    goal_diff=(stats['goals']['for'] - stats['goals']['against']),
+                    played=stats['played'],
+                    wins=stats['win'],
+                    draws=stats['draw'],
+                    losses=stats['lose'],
+                    home_goals_for=home_stats['goals']['for'],
+                    home_goals_against=home_stats['goals']['against'],
+                    home_goal_diff=(home_stats['goals']['for'] - home_stats['goals']['against']),
+                    home_played=home_stats['played'],
+                    home_wins=home_stats['win'],
+                    home_draws=home_stats['draw'],
+                    home_losses=home_stats['lose'],
+                    away_goals_for=away_stats['goals']['for'],
+                    away_goals_against=away_stats['goals']['against'],
+                    away_goal_diff=(away_stats['goals']['for'] - away_stats['goals']['against']),
+                    away_played=away_stats['played'],
+                    away_wins=away_stats['win'],
+                    away_draws=away_stats['draw'],
+                    away_losses=away_stats['lose'],
+                )
+                session.add(standing)
+                num_standings_entries_added += 1
 
-    # Print Standings table
-    console.print(f'Displaying standings for {year} season.', style="bold green")
-    print_standings_table(session, league_id, year)
+            session.commit()
+            console.print(f'Successfully added {num_standings_entries_added} standings entries for {year} season!',
+                      style="bold green")
+
+            # Print Standings table
+            console.print(f'Displaying standings for {year} season.', style="bold green")
+            print_standings_table(session, league_id, year)
+        else:
+            console.print(f'The league ID: {league_id} belongs to a cup competition which does not have standings records.',
+                          style="bold green")
+
+
+# Fetch Fixture for a Season
+#@app.command()
+#def fetch_fixtures(league_id: int, year: int):
+    # Process Data
+#    with Session(engine) as session:
+
+
+# Fetch Fixture Stats for a Season
+#@app.command()
+#def fetch_fixture_stats(league_id: int, year: int):
+    # Process Data
+#    with Session(engine) as session:
+
+
+# Fetch the Competitions for a Country and add the Teams, Venues, and Standings for 1 Season
+#@app.command()
+#def fetch_season(input_country_name: str, league_id: int, year: int):
+
 
 
 # Show Standings function
@@ -340,6 +428,14 @@ def fetch_fixtures(league_id: int, year: int):
             console.print(f'Successfully added {num_fixtures_added} fixtures for {year} {entry['league']['name']}!', style="bold green")
         else:
             console.print(f'No new competitions added for {year} {entry['league']['name']}!', style="bold green")
+
+        print_fixtures(session, league_id, year)
+
+# Show Fixtures function
+@app.command()
+def show_fixtures(league_id: int, year: int):
+    with Session(engine) as session:
+        print_fixtures(session, league_id, year)
 
 # Run App
 if __name__ == "__main__":
