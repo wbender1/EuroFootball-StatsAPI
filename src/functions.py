@@ -1,14 +1,15 @@
 # Import libraries
 import typer
-from sqlmodel import Session, select, delete, SQLModel
+from sqlmodel import Session, select, delete, SQLModel, or_
 import requests
 from rich.console import Console
 from rich.progress import track
 from datetime import datetime
+import time
 
 # Import modules
 from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
-from display_utils import print_standings_table, print_fixtures
+from display_utils import print_standings_table, print_fixtures, print_fixture_stats
 from database import engine
 import config
 
@@ -134,7 +135,7 @@ def fetch_teams(league_id: int, year: int):
             console.print(f'Created new season. League ID: {league_id}. Year: {year}', style="green")
         else:
             if season.total_teams > 0:
-                console.print(f'Found season in records. League ID: {league_id}. Year: {year}. Contains {season.teams_added} Teams',
+                console.print(f'Found season in records. League ID: {league_id}. Year: {year}. Contains {season.total_teams} Teams',
                     style="green")
                 console.print(f'No teams will be added... ending program', style="green")
                 return
@@ -192,7 +193,6 @@ def fetch_teams(league_id: int, year: int):
                 console.print(f'Created new team: {team.name}. Venue: {venue.name}', style="green")
             season.total_teams += 1
             session.commit()
-
         if teams_added > 0:
             console.print(f'Successfully added {teams_added} teams and venues!', style="bold green")
         else:
@@ -266,7 +266,6 @@ def fetch_standings(league_id: int, year: int):
                 delete_stmt = delete(Standing).where(Standing.season_id == season.id)
                 session.exec(delete_stmt)
                 console.print(f'Deleted existing standings for {season.year}.', style="yellow")
-
             # Process Data
             standings_response = standings_data['response'][0]['league']['standings'][0]
             num_standings_entries_added = 0
@@ -313,7 +312,6 @@ def fetch_standings(league_id: int, year: int):
             session.commit()
             console.print(f'Successfully added {num_standings_entries_added} standings entries for {year} season!',
                       style="bold green")
-
             # Print Standings table
             console.print(f'Displaying standings for {year} season.', style="bold green")
             print_standings_table(session, league_id, year)
@@ -321,38 +319,9 @@ def fetch_standings(league_id: int, year: int):
             console.print(f'The league ID: {league_id} belongs to a cup competition which does not have standings records.',
                           style="bold green")
 
-
-# Fetch Fixture for a Season
-#@app.command()
-#def fetch_fixtures(league_id: int, year: int):
-    # Process Data
-#    with Session(engine) as session:
-
-
-# Fetch Fixture Stats for a Season
-#@app.command()
-#def fetch_fixture_stats(league_id: int, year: int):
-    # Process Data
-#    with Session(engine) as session:
-
-
-# Fetch the Competitions for a Country and add the Teams, Venues, and Standings for 1 Season
-#@app.command()
-#def fetch_season(input_country_name: str, league_id: int, year: int):
-
-
-
-# Show Standings function
-@app.command()
-def show_standings(league_id: int, year: int):
-    with Session(engine) as session:
-        print_standings_table(session, league_id, year)
-
-
 # Fetch Fixtures
 @app.command()
 def fetch_fixtures(league_id: int, year: int):
-
     # Fetch Fixtures
     console.print(f'Fetching fixture data for {year} season with league ID {league_id}.', style="blue")
     # Api Request Setup
@@ -375,7 +344,6 @@ def fetch_fixtures(league_id: int, year: int):
         console.print("No data returned from API.", style="red")
         console.print(data['errors'])
         return
-
     # Process Data
     with Session(engine) as session:
         fixture_data = data['response']
@@ -423,19 +391,145 @@ def fetch_fixtures(league_id: int, year: int):
                 session.commit()
                 session.refresh(fixture)
                 console.print(f'Created new Fixture: {entry['teams']['home']['name']} vs. {entry['teams']['away']['name']}', style="green")
-
         if num_fixtures_added > 0:
             console.print(f'Successfully added {num_fixtures_added} fixtures for {year} {entry['league']['name']}!', style="bold green")
         else:
             console.print(f'No new competitions added for {year} {entry['league']['name']}!', style="bold green")
-
         print_fixtures(session, league_id, year)
+
+# Fetch Fixture Stats for a Season for one Team
+@app.command()
+def fetch_fixture_stats(league_id: int, year: int, team_name: str):
+    with Session(engine) as session:
+        # Find Season ID
+        season_stmt = select(Season).where((Season.year == year) & (Season.league_id == league_id))
+        season = session.exec(season_stmt).first()
+        # Find Team ID
+        team_stmt = select(Team).where(Team.name == team_name)
+        team = session.exec(team_stmt).first()
+        # Pull Fixtures list for Team and Season
+        fixtures_stmt = select(Fixture).where(
+            (Fixture.season_id == season.id) &
+            or_(
+                Fixture.home_team_id == team.team_api_id,
+                Fixture.away_team_id == team.team_api_id
+            )
+        )
+        fixtures = session.exec(fixtures_stmt).all()
+        fixtures_added = 0
+        # Iterate through Fixture IDs
+        for fixture in fixtures:
+            fix_stats_stmt = select(FixtureStats).where(FixtureStats.fixture_id == fixture.id)
+            fix_stats = session.exec(fix_stats_stmt).first()
+            if not fix_stats:
+                # Fetch Fixture Stats
+                time.sleep(10)
+                console.print(f'Fetching fixture statistics for {year} {team_name} with league ID {league_id}.',
+                              style="blue")
+                # Api Request Setup
+                standings_url = "https://v3.football.api-sports.io/fixtures/statistics"
+                headers = {
+                    'x-rapidapi-key': config.API_KEY,
+                    'x-rapidapi-host': 'v3.football.api-sports.io'
+                }
+                params = {'fixture': fixture.id}
+                # Try API Request and use error handling
+                try:
+                    response = requests.get(standings_url, headers=headers, params=params)
+                    response.raise_for_status()
+                    data = response.json()
+                except requests.exceptions.RequestException as e:
+                    console.print(f'API Request failed: {e}', style="red")
+                    return
+                if data.get('results', 0) == 0:
+                    console.print("No data returned from API.", style="red")
+                    console.print(data['errors'])
+                    return
+                # Add Home Team Stats
+                home_stats = data['response'][0]
+                # Add Away Team Stats
+                away_stats = data['response'][0]
+                fixture_instance = FixtureStats(
+                    fixture_id=data['parameters']['fixture'],
+                    home_team_id=home_stats['team']['id'],
+                    home_sh_on_goal=home_stats['statistics'][0]['value'],
+                    home_sh_off_goal=home_stats['statistics'][1]['value'],
+                    home_total_sh=home_stats['statistics'][2]['value'],
+                    home_blocked_sh=home_stats['statistics'][3]['value'],
+                    home_sh_inside=home_stats['statistics'][4]['value'],
+                    home_sh_outside=home_stats['statistics'][5]['value'],
+                    home_fouls=home_stats['statistics'][6]['value'],
+                    home_corners=home_stats['statistics'][7]['value'],
+                    home_offsides=home_stats['statistics'][8]['value'],
+                    home_possession=home_stats['statistics'][9]['value'],
+                    home_yellows=home_stats['statistics'][10]['value'],
+                    home_reds=home_stats['statistics'][11]['value'],
+                    home_saves=home_stats['statistics'][12]['value'],
+                    home_tot_passes=home_stats['statistics'][13]['value'],
+                    home_accurate_pass=home_stats['statistics'][14]['value'],
+                    home_percent_pass=home_stats['statistics'][15]['value'],
+                    home_ex_goals= None,
+                    away_team_id=away_stats['team']['id'],
+                    away_sh_on_goal=away_stats['statistics'][0]['value'],
+                    away_sh_off_goal=away_stats['statistics'][1]['value'],
+                    away_total_sh=away_stats['statistics'][2]['value'],
+                    away_blocked_sh=away_stats['statistics'][3]['value'],
+                    away_sh_inside=away_stats['statistics'][4]['value'],
+                    away_sh_outside=away_stats['statistics'][5]['value'],
+                    away_fouls=away_stats['statistics'][6]['value'],
+                    away_corners=away_stats['statistics'][7]['value'],
+                    away_offsides=away_stats['statistics'][8]['value'],
+                    away_possession=away_stats['statistics'][9]['value'],
+                    away_yellows=away_stats['statistics'][10]['value'],
+                    away_reds=away_stats['statistics'][11]['value'],
+                    away_saves=away_stats['statistics'][12]['value'],
+                    away_tot_passes=away_stats['statistics'][13]['value'],
+                    away_accurate_pass=away_stats['statistics'][14]['value'],
+                    away_percent_pass=away_stats['statistics'][15]['value'],
+                    away_ex_goals=None
+                )
+                if len(home_stats['statistics']) == 17:
+                    fixture_instance.home_ex_goals = home_stats['statistics'][16]['value']
+                    fixture_instance.away_ex_goals = away_stats['statistics'][16]['value']
+                session.add(fixture_instance)
+                session.commit()
+                fixtures_added += 1
+                console.print(
+                    f'Created new Fixture Statistics: {home_stats['team']['name']} vs. {away_stats['team']['name']}',
+                    style="green")
+        if fixtures_added > 0:
+            console.print(f'Successfully added {fixtures_added} fixtures for {year} League ID: {league_id}!',
+                        style="bold green")
+        else:
+            console.print(f'No new competitions added for {year} League ID: {league_id}!', style="bold green")
+
+
+
+# Fetch Season
+@app.command()
+def fetch_season(input_country_name: str, league_id: int, year: int):
+    fetch_competitions(input_country_name)
+    fetch_teams(league_id, year)
+    fetch_standings(league_id, year)
+    fetch_fixtures(league_id, year)
+
+# Show Standings function
+@app.command()
+def show_standings(league_id: int, year: int):
+    with Session(engine) as session:
+        print_standings_table(session, league_id, year)
 
 # Show Fixtures function
 @app.command()
 def show_fixtures(league_id: int, year: int):
     with Session(engine) as session:
         print_fixtures(session, league_id, year)
+
+# Show Fixture Stats function
+@app.command()
+def show_fixture_stats(league_id: int, year: int, team_name1: str, team_name2: str):
+    with Session(engine) as session:
+        print_fixture_stats(session, league_id, year, team_name1, team_name2)
 
 # Run App
 if __name__ == "__main__":

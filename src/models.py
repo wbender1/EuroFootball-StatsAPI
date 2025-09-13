@@ -108,25 +108,43 @@ class Fixture(SQLModel, table=True):
 
 # Define a FixtureStats Model, links to Fixture and Team (one)
 class FixtureStats(SQLModel, table=True):
-    id: int = Field(primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     fixture_id: int = Field(foreign_key="fixture.id")
-    team_id: int = Field(foreign_key="team.team_api_id")
-    sh_on_goal: int
-    sh_off_goal: int
-    total_sh: int
-    blocked_sh: int
-    sh_inside: int
-    sh_outside: int
-    fouls: int
-    corners: int
-    offsides: int
-    possession: str
-    yellows: Optional[int] = Field(default=None)
-    reds: Optional[int] = Field(default=None)
-    saves: int
-    tot_passes: int
-    accurate_pass: int
-    percent_pass: str
-    ex_goals: str
+    home_team_id: int = Field(foreign_key="team.team_api_id")
+    home_sh_on_goal: Optional[int] = Field(default=None)
+    home_sh_off_goal: Optional[int] = Field(default=None)
+    home_total_sh: Optional[int] = Field(default=None)
+    home_blocked_sh: Optional[int] = Field(default=None)
+    home_sh_inside: Optional[int] = Field(default=None)
+    home_sh_outside: Optional[int] = Field(default=None)
+    home_fouls: Optional[int] = Field(default=None)
+    home_corners: Optional[int] = Field(default=None)
+    home_offsides: Optional[int] = Field(default=None)
+    home_possession: Optional[str] = Field(default=None)
+    home_yellows: Optional[int] = Field(default=None)
+    home_reds: Optional[int] = Field(default=None)
+    home_saves: Optional[int] = Field(default=None)
+    home_tot_passes: Optional[int] = Field(default=None)
+    home_accurate_pass: Optional[int] = Field(default=None)
+    home_percent_pass: Optional[str] = Field(default=None)
+    home_ex_goals: Optional[str] = Field(default=None)
+    away_team_id: int = Field(foreign_key="team.team_api_id")
+    away_sh_on_goal: Optional[int] = Field(default=None)
+    away_sh_off_goal: Optional[int] = Field(default=None)
+    away_total_sh: Optional[int] = Field(default=None)
+    away_blocked_sh: Optional[int] = Field(default=None)
+    away_sh_inside: Optional[int] = Field(default=None)
+    away_sh_outside: Optional[int] = Field(default=None)
+    away_fouls: Optional[int] = Field(default=None)
+    away_corners: Optional[int] = Field(default=None)
+    away_offsides: Optional[int] = Field(default=None)
+    away_possession: Optional[str] = Field(default=None)
+    away_yellows: Optional[int] = Field(default=None)
+    away_reds: Optional[int] = Field(default=None)
+    away_saves: Optional[int] = Field(default=None)
+    away_tot_passes: Optional[int] = Field(default=None)
+    away_accurate_pass: Optional[int] = Field(default=None)
+    away_percent_pass: Optional[str] = Field(default=None)
+    away_ex_goals: Optional[str] = Field(default=None)
 
-    __table_args__ = (UniqueConstraint("fixture_id", "team_id"),)
+    __table_args__ = (UniqueConstraint("fixture_id", "home_team_id", "away_team_id"),)
