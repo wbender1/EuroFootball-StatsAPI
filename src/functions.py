@@ -448,7 +448,7 @@ def fetch_fixture_stats(league_id: int, year: int, team_name: str):
                 # Add Home Team Stats
                 home_stats = data['response'][0]
                 # Add Away Team Stats
-                away_stats = data['response'][0]
+                away_stats = data['response'][1]
                 fixture_instance = FixtureStats(
                     fixture_id=data['parameters']['fixture'],
                     home_team_id=home_stats['team']['id'],
@@ -530,6 +530,13 @@ def show_fixtures(league_id: int, year: int):
 def show_fixture_stats(league_id: int, year: int, team_name1: str, team_name2: str):
     with Session(engine) as session:
         print_fixture_stats(session, league_id, year, team_name1, team_name2)
+
+# Delete FixtureStats contents
+@app.command()
+def delete_fixture_stats():
+    with Session(engine) as session:
+        session.exec(delete(FixtureStats))
+        session.commit()
 
 # Run App
 if __name__ == "__main__":
