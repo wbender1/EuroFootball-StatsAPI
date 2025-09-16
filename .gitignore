@@ -19,5 +19,6 @@ json_files/
 test_codes/
 database.db
 
-# Ignore Model Planning
+# Ignore Planning
 /model_planning
+ToDo.txt

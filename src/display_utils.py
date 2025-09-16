@@ -5,21 +5,32 @@ from tabulate import tabulate
 from sqlalchemy.orm import aliased
 
 # Import modules
-from models import Team, Season, Standing, Fixture, Venue, FixtureStats
+from models import Team, Season, Standing, Fixture, Venue, FixtureStats, Competition
 
 # Create console
 console = Console()
 
 # Display Standings for a season
-def print_standings_table(session: Session, league_id: int, year: int):
-    # Find season
-    season = session.exec(
-        select(Season).where(
-            (Season.year == year) & (Season.league_id == league_id)
-        )
-    ).first()
+def print_standings_table(session: Session, competition_name: str, year: int):
+    # Find League ID
+    competition_stmt = select(Competition).where(Competition.comp_name == competition_name)
+    competition = session.exec(competition_stmt).first()
+    if not competition:
+        console.print(f'{competition_name} competition not found.', style="yellow")
+        return
+    else:
+        league_id = competition.comp_api_id
+    # Find Season ID
+    season_stmt = select(Season).where(
+        (Season.league_id == league_id) & (Season.year == year)
+    )
+    season = session.exec(season_stmt).first()
     if not season:
-        console.print(f'[red]Error:[/red] No season found for {year} and league ID {league_id}.')
+        console.print(
+            f'[red]Error:[/red] There is no season in database for the {year} {competition_name} (Competition ID: {league_id}) season.',
+            style="yellow")
+        console.print('Please add the required season & teams before adding standings data.',
+                      style="yellow")
         return
     # Query standings and Teams
     standings = session.exec(
@@ -49,15 +60,26 @@ def print_standings_table(session: Session, league_id: int, year: int):
 
 
 # Display Fixtures for a Season
-def print_fixtures(session: Session, league_id: int, year: int):
-    # Find season
-    season = session.exec(
-        select(Season).where(
-            (Season.year == year) & (Season.league_id == league_id)
-        )
-    ).first()
+def print_fixtures(session: Session, competition_name: str, year: int):
+    # Find League ID
+    competition_stmt = select(Competition).where(Competition.comp_name == competition_name)
+    competition = session.exec(competition_stmt).first()
+    if not competition:
+        console.print(f'{competition_name} competition not found.', style="yellow")
+        return
+    else:
+        league_id = competition.comp_api_id
+    # Find Season ID
+    season_stmt = select(Season).where(
+        (Season.league_id == league_id) & (Season.year == year)
+    )
+    season = session.exec(season_stmt).first()
     if not season:
-        console.print(f'[red]Error:[/red] No season found for {year} and league ID {league_id}.')
+        console.print(
+            f'[red]Error:[/red] There is no season in database for the {year} {competition_name} (Competition ID: {league_id}) season.',
+            style="yellow")
+        console.print('Please add the required season & teams before adding standings data.',
+                      style="yellow")
         return
     # Create aliases to join Team table twice
     HomeTeam = aliased(Team)
@@ -74,7 +96,7 @@ def print_fixtures(session: Session, league_id: int, year: int):
     # Print Table
     data = []
     # Premier League
-    if league_id == 39:
+    if league_id == 39 or league_id == 140:
         for fixture, home_team_name, away_team_name, venue in fixtures:
             round_str = fixture.round
             matchday_num = int(round_str.split(" - ")[-1])
@@ -111,31 +133,40 @@ def print_fixtures(session: Session, league_id: int, year: int):
         print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 # Display Fixture Statistics for a Teams Season
-def print_fixture_stats(session: Session, league_id: int, year: int, team_name1: str, team_name2: str):
-    # Find season
-    season = session.exec(
-        select(Season).where(
-            (Season.year == year) & (Season.league_id == league_id)
-        )
-    ).first()
+def print_fixture_stats(session: Session, competition_name: str, year: int, team_name1: str, team_name2: str):
+    # Find League ID
+    competition_stmt = select(Competition).where(Competition.comp_name == competition_name)
+    competition = session.exec(competition_stmt).first()
+    if not competition:
+        console.print(f'{competition_name} competition not found.', style="yellow")
+        return
+    else:
+        league_id = competition.comp_api_id
+    # Find Season ID
+    season_stmt = select(Season).where(
+        (Season.league_id == league_id) & (Season.year == year)
+    )
+    season = session.exec(season_stmt).first()
     if not season:
-        console.print(f'[red]Error:[/red] No season found for {year} and league ID {league_id}.')
+        console.print(
+            f'[red]Error:[/red] There is no season in database for the {year} {competition_name} (Competition ID: {league_id}) season.',
+            style="yellow")
+        console.print('Please add the required season & teams before adding standings data.',
+                      style="yellow")
         return
     # Find Team IDs
-    team_stmt1 = select(Team).where(Team.name == team_name1)
-    team1 = session.exec(team_stmt1).first()
-    team_stmt2 = select(Team).where(Team.name == team_name2)
-    team2 = session.exec(team_stmt2).first()
+    team1 = session.exec(select(Team).where(Team.name == team_name1)).first()
+    team2 = session.exec(select(Team).where(Team.name == team_name2)).first()
     # Create aliases to join Team table twice
     HomeTeam = aliased(Team)
     AwayTeam = aliased(Team)
     # Query Fixtures, teams, venue
     fixtures = session.exec(
         select(Fixture, HomeTeam.name.label("home_team_name"), AwayTeam.name.label("away_team_name"), Venue, FixtureStats)
-        .join(HomeTeam, Fixture.home_team_id == HomeTeam.team_api_id)
-        .join(AwayTeam, Fixture.away_team_id == AwayTeam.team_api_id)
-        .join(Venue, Fixture.venue_id == Venue.venue_api_id)
-        .join(FixtureStats, Fixture.id == FixtureStats.fixture_id)
+        .outerjoin(HomeTeam, Fixture.home_team_id == HomeTeam.team_api_id)
+        .outerjoin(AwayTeam, Fixture.away_team_id == AwayTeam.team_api_id)
+        .outerjoin(Venue, Fixture.venue_id == Venue.venue_api_id)
+        .outerjoin(FixtureStats, Fixture.id == FixtureStats.fixture_id)
         .where(
             (Fixture.season_id == season.id) &
             or_(
@@ -147,7 +178,7 @@ def print_fixture_stats(session: Session, league_id: int, year: int, team_name1:
     ).all()
     # Print Table
     headers = [
-        "Match Day", "Date", "Home Team", "Away Team", "Referee"
+        "Match Day", "Date", "Home Team", "Away Team", "Referee", "Venue"
     ]
     for fixture, home_team_name, away_team_name, venue, fixturestats in fixtures:
         data = []
@@ -158,7 +189,8 @@ def print_fixture_stats(session: Session, league_id: int, year: int, team_name1:
             fixture.date,
             home_team_name,
             away_team_name,
-            fixture.referee
+            fixture.referee,
+            venue.name
         ])
         console.print(f"\n[bold]Fixture for {fixture.date}.")
         print(tabulate(data, headers=headers, tablefmt="pretty"))
