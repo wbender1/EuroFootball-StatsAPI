@@ -1,5 +1,5 @@
 # Import libraries
-from sqlmodel import Session, select, or_
+from sqlmodel import Session, select, or_, and_
 from rich.console import Console
 from tabulate import tabulate
 from sqlalchemy.orm import aliased
@@ -138,25 +138,20 @@ def print_fixture_stats(session: Session, competition_name: str, year: int, team
     competition_stmt = select(Competition).where(Competition.comp_name == competition_name)
     competition = session.exec(competition_stmt).first()
     if not competition:
-        console.print(f'{competition_name} competition not found.', style="yellow")
-        return
-    else:
-        league_id = competition.comp_api_id
+        raise ValueError(f'{competition_name} competition not found.')
     # Find Season ID
     season_stmt = select(Season).where(
-        (Season.league_id == league_id) & (Season.year == year)
+        and_(Season.league_id == competition.comp_api_id, Season.year == year)
     )
     season = session.exec(season_stmt).first()
     if not season:
-        console.print(
-            f'[red]Error:[/red] There is no season in database for the {year} {competition_name} (Competition ID: {league_id}) season.',
-            style="yellow")
-        console.print('Please add the required season & teams before adding standings data.',
-                      style="yellow")
-        return
+        raise ValueError(f'There is no season in database for the {year} {competition_name} season.')
     # Find Team IDs
     team1 = session.exec(select(Team).where(Team.name == team_name1)).first()
     team2 = session.exec(select(Team).where(Team.name == team_name2)).first()
+    if not team1 or not team2:
+        raise ValueError(f'One or both teams not found')
+    print(f'team1: {team1.name}. team2: {team2.name}')
     # Create aliases to join Team table twice
     HomeTeam = aliased(Team)
     AwayTeam = aliased(Team)
@@ -168,15 +163,20 @@ def print_fixture_stats(session: Session, competition_name: str, year: int, team
         .outerjoin(Venue, Fixture.venue_id == Venue.venue_api_id)
         .outerjoin(FixtureStats, Fixture.id == FixtureStats.fixture_id)
         .where(
-            (Fixture.season_id == season.id) &
-            or_(
-                (Fixture.home_team_id == team1.team_api_id) & (Fixture.away_team_id == team2.team_api_id),
-                (Fixture.home_team_id == team2.team_api_id) & (Fixture.away_team_id == team1.team_api_id)
+            and_(
+                Fixture.season_id == season.id,
+                or_(
+                    and_(Fixture.home_team_id == team1.team_api_id,
+                         Fixture.away_team_id == team2.team_api_id),
+                    and_(Fixture.home_team_id == team2.team_api_id,
+                         Fixture.away_team_id == team1.team_api_id)
+                )
             )
         )
         .order_by(Fixture.date)
     ).all()
     # Print Table
+    print(f'number fixtures {len(fixtures)}')
     headers = [
         "Match Day", "Date", "Home Team", "Away Team", "Referee", "Venue"
     ]

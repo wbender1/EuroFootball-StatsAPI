@@ -1,6 +1,6 @@
 # Import libraries
 import typer
-from sqlmodel import Session, select, delete, SQLModel, or_
+from sqlmodel import Session, select, delete, SQLModel, or_, and_
 import requests
 from rich.console import Console
 from rich.progress import track
@@ -193,7 +193,6 @@ def fetch_teams(competition_name: str, year: int):
                     founded=team_data['founded'],
                     national=team_data['national'],
                     logo_url=team_data['logo'],
-                    venue_id=venue.venue_api_id
                 )
                 session.add(team)
                 teams_added += 1
@@ -321,7 +320,7 @@ def fetch_standings(competition_name: str, year: int):
                       style="bold green")
             # Print Standings table
             console.print(f'Displaying standings for {year} season.', style="bold green")
-            print_standings_table(session, league_id, year)
+            print_standings_table(session, competition_name, year)
         else:
             console.print(f'The {year} {competition_name} (Competition ID: {league_id}) season belongs to a cup competition which does not have standings records.',
                           style="bold green")
@@ -378,7 +377,34 @@ def fetch_fixtures(competition_name: str, year: int):
     for entry in track(fixture_data, description="Processing Fixtures."):
         fixture_id = entry['fixture']['id']
         fixture_data = entry['fixture']
-        score_data = entry['score']
+        venue_stmt = select(Venue).where(Venue.venue_api_id == fixture_data['venue']['id'])
+        venue = session.exec(venue_stmt).first()
+        if not venue:
+            # Create Venue
+            if fixture_data['venue']['id'] is None:
+                venue = Venue(
+                    venue_api_id=-1 * fixture_data['teams']['home']['id'],
+                    name=None,
+                    address=None,
+                    city=None,
+                    capacity=None,
+                    surface=None,
+                    image=None
+                )
+                session.add(venue)
+                session.flush()
+            else:
+                venue = Venue(
+                    venue_api_id=fixture_data['venue']['id'],
+                    name=fixture_data['venue']['name'],
+                    address=None,
+                    city=fixture_data['venue']['city'],
+                    capacity=None,
+                    surface=None,
+                    image=None
+                )
+                session.add(venue)
+                session.commit()
         # Find or create Fixture
         fixture_stmt = select(Fixture).where(Fixture.id == fixture_id)
         fixture = session.exec(fixture_stmt).first()
@@ -388,7 +414,7 @@ def fetch_fixtures(competition_name: str, year: int):
                 season_id=season.id,
                 home_team_id=entry['teams']['home']['id'],
                 away_team_id=entry['teams']['away']['id'],
-                venue_id=entry['fixture']['venue']['id'],
+                venue_id=fixture_data['venue']['id'],
                 competition_id=competition.comp_api_id,
                 referee=fixture_data['referee'],
                 date=datetime.fromisoformat(fixture_data['date']),
@@ -417,7 +443,7 @@ def fetch_fixtures(competition_name: str, year: int):
                       style="bold green")
     else:
         console.print(f'No new fixtures added for {year} {year} {competition_name} (Competition ID: {league_id}) season!', style="bold green")
-    print_fixtures(session, league_id, year)
+    print_fixtures(session, competition_name, year)
 
 # Fetch Fixture Stats for a Season for one Team
 @app.command()
@@ -455,6 +481,11 @@ def fetch_fixture_stats(competition_name: str, year: int, team_name: str):
             )
         )
         fixtures = session.exec(fixtures_stmt).all()
+        if not fixtures:
+            console.print(
+                f'There are no fixtures found for the {year} {competition_name} (Competition ID: {league_id}) season.',
+                style="yellow")
+            return
         fixtures_added = 0
         # Iterate through Fixture IDs
         for fixture in fixtures:
@@ -462,7 +493,7 @@ def fetch_fixture_stats(competition_name: str, year: int, team_name: str):
             fix_stats = session.exec(fix_stats_stmt).first()
             if not fix_stats:
                 # Fetch Fixture Stats
-                time.sleep(10)
+                time.sleep(8)
                 console.print(f'Fetching fixture statistics for Fixture with ID: {fixture.id}.',
                               style="blue")
                 # Api Request Setup
@@ -540,7 +571,7 @@ def fetch_fixture_stats(competition_name: str, year: int, team_name: str):
             console.print(f'Successfully added Statistics for {fixtures_added} fixtures for {year} {competition_name} (Competition ID: {league_id}) season!',
                         style="bold green")
         else:
-            console.print(f'No new competitions added for {year} {competition_name} (Competition ID: {league_id}) season.', style="bold green")
+            console.print(f'No new fixture statistics added for {year} {competition_name} (Competition ID: {league_id}) season.', style="bold green")
 
 
 

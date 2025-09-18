@@ -40,7 +40,6 @@ class Team(SQLModel, table=True):
     founded: Optional[int] = Field(default=None)
     national: bool
     logo_url: str
-    venue_id: int = Field(foreign_key="venue.venue_api_id", unique=True)
 
 # Define Season Model, links to Competition
 class Season(SQLModel, table=True):
