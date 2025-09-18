@@ -159,6 +159,12 @@ def fetch_teams(competition_name: str, year: int):
             venue_stmt = select(Venue).where(Venue.venue_api_id == venue_data['id'])
             venue = session.exec(venue_stmt).first()
             if not venue:
+                # Check negative venue
+                neg_venue_id = -1 * team_data['id']
+                venue_stmt = select(Venue).where(Venue.venue_api_id == neg_venue_id)
+                venue_check = session.exec(venue_stmt).first()
+                if venue_check:
+                    break
                 # Create Venue
                 if venue_data['id'] == None:
                     venue = Venue(
@@ -380,10 +386,16 @@ def fetch_fixtures(competition_name: str, year: int):
         venue_stmt = select(Venue).where(Venue.venue_api_id == fixture_data['venue']['id'])
         venue = session.exec(venue_stmt).first()
         if not venue:
+            # Check negative venue
+            neg_venue_id = -1 * entry['teams']['home']['id']
+            venue_stmt = select(Venue).where(Venue.venue_api_id == neg_venue_id)
+            venue_check = session.exec(venue_stmt).first()
+            if venue_check:
+                break
             # Create Venue
             if fixture_data['venue']['id'] is None:
                 venue = Venue(
-                    venue_api_id=-1 * fixture_data['teams']['home']['id'],
+                    venue_api_id= -1 * entry['teams']['home']['id'],
                     name=None,
                     address=None,
                     city=None,
@@ -392,7 +404,7 @@ def fetch_fixtures(competition_name: str, year: int):
                     image=None
                 )
                 session.add(venue)
-                session.flush()
+                session.commit()
             else:
                 venue = Venue(
                     venue_api_id=fixture_data['venue']['id'],
@@ -414,7 +426,7 @@ def fetch_fixtures(competition_name: str, year: int):
                 season_id=season.id,
                 home_team_id=entry['teams']['home']['id'],
                 away_team_id=entry['teams']['away']['id'],
-                venue_id=fixture_data['venue']['id'],
+                venue_id=venue.venue_api_id,
                 competition_id=competition.comp_api_id,
                 referee=fixture_data['referee'],
                 date=datetime.fromisoformat(fixture_data['date']),

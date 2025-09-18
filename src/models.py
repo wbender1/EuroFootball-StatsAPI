@@ -89,17 +89,17 @@ class Fixture(SQLModel, table=True):
     away_team_id: int = Field(foreign_key="team.team_api_id") # Many-to-one
     venue_id: int = Field(foreign_key="venue.venue_api_id") # Many-to-one
     competition_id: int = Field(foreign_key="competition.comp_api_id") # Many-to-one
-    referee: str
+    referee: Optional[str] = Field(default=None)
     date: datetime
     short_status: str
-    elapsed: int
+    elapsed: Optional[int] = Field(default=None)
     round: str
-    home_goals: int
-    away_goals: int
-    half_home_goals: int
-    half_away_goals: int
-    full_home_goals: int
-    full_away_goals: int
+    home_goals: Optional[int] = Field(default=None)
+    away_goals: Optional[int] = Field(default=None)
+    half_home_goals: Optional[int] = Field(default=None)
+    half_away_goals: Optional[int] = Field(default=None)
+    full_home_goals: Optional[int] = Field(default=None)
+    full_away_goals: Optional[int] = Field(default=None)
     et_home_goals: Optional[int] = Field(default=None)
     et_away_goals: Optional[int] = Field(default=None)
     pen_home_goals: Optional[int] = Field(default=None)

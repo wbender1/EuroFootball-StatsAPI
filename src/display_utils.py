@@ -96,7 +96,7 @@ def print_fixtures(session: Session, competition_name: str, year: int):
     # Print Table
     data = []
     # Premier League
-    if league_id == 39 or league_id == 140:
+    if competition.comp_type == 'League':
         for fixture, home_team_name, away_team_name, venue in fixtures:
             round_str = fixture.round
             matchday_num = int(round_str.split(" - ")[-1])
@@ -115,7 +115,7 @@ def print_fixtures(session: Session, competition_name: str, year: int):
         console.print(f"\n[bold]Fixtures for {year}.")
         print(tabulate(data, headers=headers, tablefmt="pretty"))
 
-    elif league_id == 45:
+    else:
         for fixture, home_team_name, away_team_name, venue in fixtures:
             data.append([
                 fixture.round,
