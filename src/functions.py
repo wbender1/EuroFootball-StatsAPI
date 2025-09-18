@@ -1,4 +1,6 @@
 # Import libraries
+from typing import Optional
+
 import typer
 from sqlmodel import Session, select, delete, SQLModel, or_, and_
 import requests, json
@@ -9,7 +11,7 @@ import time
 
 # Import modules
 from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
-from display_utils import print_standings_table, print_fixtures, print_fixture_stats
+from display_utils import print_standings_table, print_fixtures, print_fixture_stats, print_team_fixtures
 from database import engine
 import config
 
@@ -606,9 +608,12 @@ def show_standings(competition_name: str, year: int):
 
 # Show Fixtures function
 @app.command()
-def show_fixtures(competition_name: str, year: int):
+def show_fixtures(competition_name: str, year: int, team_name: Optional[str] = typer.Argument(None)):
     with Session(engine) as session:
-        print_fixtures(session, competition_name, year)
+        if team_name:
+            print_team_fixtures(session, competition_name, year, team_name)
+        else:
+            print_fixtures(session, competition_name, year)
 
 # Show Fixture Stats function
 @app.command()
