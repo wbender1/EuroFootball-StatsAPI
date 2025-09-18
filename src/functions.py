@@ -1,7 +1,7 @@
 # Import libraries
 import typer
 from sqlmodel import Session, select, delete, SQLModel, or_, and_
-import requests
+import requests, json
 from rich.console import Console
 from rich.progress import track
 from datetime import datetime
@@ -164,7 +164,7 @@ def fetch_teams(competition_name: str, year: int):
                 venue_stmt = select(Venue).where(Venue.venue_api_id == neg_venue_id)
                 venue_check = session.exec(venue_stmt).first()
                 if venue_check:
-                    break
+                    continue
                 # Create Venue
                 if venue_data['id'] == None:
                     venue = Venue(
@@ -377,6 +377,9 @@ def fetch_fixtures(competition_name: str, year: int):
         console.print(data['errors'])
         return
     # Process Data
+    # Write to file
+    with open('output.json', 'w') as f:
+        json.dump(data, f, indent=4)
     fixture_data = data['response']
     num_comps_added = 0
     num_fixtures_added = 0
@@ -391,7 +394,7 @@ def fetch_fixtures(competition_name: str, year: int):
             venue_stmt = select(Venue).where(Venue.venue_api_id == neg_venue_id)
             venue_check = session.exec(venue_stmt).first()
             if venue_check:
-                break
+                continue
             # Create Venue
             if fixture_data['venue']['id'] is None:
                 venue = Venue(
