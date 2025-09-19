@@ -11,13 +11,19 @@ import time
 
 # Import modules
 from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
-from display_utils import print_standings_table, print_fixtures, print_fixture_stats, print_team_fixtures
+# Import print functions
+from display_utils import (print_comps, print_type_comps, print_countries, print_fixtures, print_team_fixtures,
+                           print_fixture_stats, print_seasons, print_comp_seasons, print_year_seasons,
+                           print_standings_table, print_teams, print_comp_teams, print_venues, print_country_venues,
+                           print_comp_venues)
 from database import engine
 import config
+
 
 # Create Typer app and console
 app = typer.Typer()
 console = Console()
+
 
 # Initialize Database
 @app.command()
@@ -25,6 +31,8 @@ def init_db():
     SQLModel.metadata.create_all(engine)
     console.print("Database tables created!", style="green")
 
+
+#**********************************     Fetch Data Functions    *************************************#
 # Fetch Competitions and Create Country
 @app.command()
 def fetch_competitions(input_country_name: str):
@@ -333,6 +341,7 @@ def fetch_standings(competition_name: str, year: int):
             console.print(f'The {year} {competition_name} (Competition ID: {league_id}) season belongs to a cup competition which does not have standings records.',
                           style="bold green")
 
+
 # Fetch Fixtures
 @app.command()
 def fetch_fixtures(competition_name: str, year: int):
@@ -461,6 +470,7 @@ def fetch_fixtures(competition_name: str, year: int):
     else:
         console.print(f'No new fixtures added for {year} {year} {competition_name} (Competition ID: {league_id}) season!', style="bold green")
     print_fixtures(session, competition_name, year)
+
 
 # Fetch Fixture Stats for a Season for one Team
 @app.command()
@@ -599,6 +609,25 @@ def fetch_season(input_country_name: str, competition_name: str, year: int):
     fetch_teams(competition_name, year)
     fetch_standings(competition_name, year)
     fetch_fixtures(competition_name, year)
+
+#**********************************     Show Data Functions     *************************************#
+# Show Countries
+@ app.command()
+def show_countries():
+    with Session(engine) as session:
+        print_countries(session)
+
+# Show Competitions
+
+
+# Show Seasons
+
+
+# Show Teams
+
+
+# Show Venues
+
 
 # Show Standings function
 @app.command()

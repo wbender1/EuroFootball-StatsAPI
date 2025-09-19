@@ -4,60 +4,50 @@ from rich.console import Console
 from tabulate import tabulate
 from sqlalchemy.orm import aliased
 
-# Import modules
-from models import Team, Season, Standing, Fixture, Venue, FixtureStats, Competition
+# Import Models
+from models import Competition, Country, Fixture, FixtureStats, Season, Standing, Team,  Venue
 
 # Create console
 console = Console()
 
-# Display Standings for a season
-def print_standings_table(session: Session, competition_name: str, year: int):
-    # Find League ID
-    competition_stmt = select(Competition).where(Competition.comp_name == competition_name)
-    competition = session.exec(competition_stmt).first()
-    if not competition:
-        console.print(f'{competition_name} competition not found.', style="yellow")
-        return
-    else:
-        league_id = competition.comp_api_id
-    # Find Season ID
-    season_stmt = select(Season).where(
-        (Season.league_id == league_id) & (Season.year == year)
-    )
-    season = session.exec(season_stmt).first()
-    if not season:
-        console.print(
-            f'[red]Error:[/red] There is no season in database for the {year} {competition_name} (Competition ID: {league_id}) season.',
-            style="yellow")
-        console.print('Please add the required season & teams before adding standings data.',
-                      style="yellow")
-        return
-    # Query standings and Teams
-    standings = session.exec(
-        select(Standing, Team).join(Team, Standing.team_id == Team.team_api_id).where(Standing.season_id == season.id).order_by(Standing.position)
-    ).all()
+#**********************************     Competitions    *************************************#
+
+# Display all Competitions for a Country
+def print_comps():
+    console.print('Function not added')
+
+
+# Display all League or Cup Competitions for a Country
+def print_type_comps():
+    console.print('Function not added')
+
+
+#**********************************     Countries       *************************************#
+
+# Display all Countries
+def print_countries(session: Session):
+    countries_stmt = select(Country).order_by(Country.country_name)
+    countries = session.exec(countries_stmt).all()
+    if not countries:
+        raise ValueError(f' No Countries found.')
     # Print Table
     data = []
-    for standing, team in standings:
+    for country in countries:
         data.append([
-            standing.position,
-            team.name,
-            standing.played,
-            standing.wins,
-            standing.draws,
-            standing.losses,
-            standing.goals_for,
-            standing.goals_against,
-            standing.goal_diff,
-            standing.points
+            country.country_name,
+            country.num_comps,
+            country.code,
+            country.flag
         ])
     headers = [
-        "", "Team", "GP", "W", "D", "L", "F", "A", "GD", "P"
+        "Name", "Number of Competitions", "Code", "Flag"
     ]
 
-    console.print(f"\n[bold]Standings for {year}.")
+    console.print(f"\n[bold]Countries.")
     print(tabulate(data, headers=headers, tablefmt="pretty"))
 
+
+#**********************************     Fixtures        *************************************#
 
 # Display All Fixtures for a Season
 def print_fixtures(session: Session, competition_name: str, year: int):
@@ -211,7 +201,9 @@ def print_team_fixtures(session: Session, competition_name: str, year: int, team
         print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 
-# Display Fixture Statistics for a Teams Season
+#**********************************     Fixture Stats    *************************************#
+
+# Display Fixture Statistics for two Teams in a Season
 def print_fixture_stats(session: Session, competition_name: str, year: int, team_name1: str, team_name2: str):
     # Find League ID
     competition_stmt = select(Competition).where(Competition.comp_name == competition_name)
@@ -293,3 +285,96 @@ def print_fixture_stats(session: Session, competition_name: str, year: int, team
         stats.append([fixturestats.home_accurate_pass, "ACCURATE PASSES", fixturestats.away_accurate_pass])
         stats.append([fixturestats.home_percent_pass, "PASSING %", fixturestats.away_percent_pass])
         print(tabulate(stats, headers=headers_stats, tablefmt="pretty"))
+
+
+#**********************************     Seasons         *************************************#
+
+# Display all Seasons
+def print_seasons():
+    console.print('Function not added')
+
+# Display Seasons for a Competition
+def print_comp_seasons():
+    console.print('Function not added')
+
+# Display Seasons for a Year
+def print_year_seasons():
+    console.print('Function not added')
+
+
+#**********************************     Standings       *************************************#
+
+# Display Standings for a season
+def print_standings_table(session: Session, competition_name: str, year: int):
+    # Find League ID
+    competition_stmt = select(Competition).where(Competition.comp_name == competition_name)
+    competition = session.exec(competition_stmt).first()
+    if not competition:
+        console.print(f'{competition_name} competition not found.', style="yellow")
+        return
+    else:
+        league_id = competition.comp_api_id
+    # Find Season ID
+    season_stmt = select(Season).where(
+        (Season.league_id == league_id) & (Season.year == year)
+    )
+    season = session.exec(season_stmt).first()
+    if not season:
+        console.print(
+            f'[red]Error:[/red] There is no season in database for the {year} {competition_name} (Competition ID: {league_id}) season.',
+            style="yellow")
+        console.print('Please add the required season & teams before adding standings data.',
+                      style="yellow")
+        return
+    # Query standings and Teams
+    standings = session.exec(
+        select(Standing, Team).join(Team, Standing.team_id == Team.team_api_id).where(Standing.season_id == season.id).order_by(Standing.position)
+    ).all()
+    # Print Table
+    data = []
+    for standing, team in standings:
+        data.append([
+            standing.position,
+            team.name,
+            standing.played,
+            standing.wins,
+            standing.draws,
+            standing.losses,
+            standing.goals_for,
+            standing.goals_against,
+            standing.goal_diff,
+            standing.points
+        ])
+    headers = [
+        "", "Team", "GP", "W", "D", "L", "F", "A", "GD", "P"
+    ]
+
+    console.print(f"\n[bold]Standings for {year}.")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
+
+
+#**********************************     Teams           *************************************#
+
+# Display all Teams
+def print_teams():
+    console.print('Function not added')
+
+# Display Teams for a Competition and Year
+def print_comp_teams():
+    console.print('Function not added')
+
+
+#**********************************     Venues          *************************************#
+
+# Display all Venues
+def print_venues():
+    console.print('Function not added')
+
+# Display all Venues for a Country
+def print_country_venues():
+    console.print('Function not added')
+
+# Display Venues for a Competition and Year
+def print_comp_venues():
+    console.print('Function not added')
+

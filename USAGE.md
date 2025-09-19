@@ -52,8 +52,13 @@ Retrieve all the fixtures for a COMPETITION_NAME and YEAR using:
 `python src/functions.py fetch-fixtures "COMPETITION_NAME" YEAR`
 
 ## Show Fixtures
-display all league fixtures for one season
-optional 1 team & one season input
+Display all fixtures for a COMPETITION_NAME from one YEAR using:
+
+`python src/functions.py show-fixtures "COMPETITION_NAME" YEAR`
+
+Display the fixtures for one TEAM for a COMPETITION_NAME from one YEAR:
+
+`python src/functions.py show-fixtures "COMPETITION_NAME" YEAR "TEAM"`
 
 ## Fetch Fixture Stats
 Retrieve all the fixture statistics for a COMPETITION_NAME, YEAR, and TEAM using:
@@ -61,7 +66,7 @@ Retrieve all the fixture statistics for a COMPETITION_NAME, YEAR, and TEAM using
 `python src/functions.py fetch-fixture-stats "COMPETITION_NAME" YEAR "TEAM"`
 
 ## Show Fixture Stats
-Retrieve fixture stats for two teams from one competition and year
+Display fixture stats for two teams from one competition and year
 
 ## Fetch Season
 Retrieve all the competitions, teams, standings, a
