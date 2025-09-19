@@ -12,8 +12,8 @@ import time
 # Import modules
 from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
 # Import print functions
-from display_utils import (print_comps, print_type_comps, print_countries, print_fixtures, print_team_fixtures,
-                           print_fixture_stats, print_seasons, print_comp_seasons, print_year_seasons,
+from display_utils import (print_comps, print_country_type_comps, print_type_comps, print_countries, print_fixtures,
+                           print_team_fixtures, print_fixture_stats, print_seasons, print_comp_seasons, print_year_seasons,
                            print_standings_table, print_teams, print_comp_teams, print_venues, print_country_venues,
                            print_comp_venues)
 from database import engine
@@ -618,7 +618,16 @@ def show_countries():
         print_countries(session)
 
 # Show Competitions
-
+@ app.command()
+def show_competitions(country_name: Optional[str] = typer.Option(None, "--country", "-c"),
+                      comp_type: Optional[str] = typer.Option(None, "--type", "-t")):
+    with Session(engine) as session:
+        if comp_type and country_name:
+            print_country_type_comps(session, country_name, comp_type)
+        if comp_type:
+            print_type_comps(session, comp_type)
+        else:
+            print_comps(session, country_name)
 
 # Show Seasons
 

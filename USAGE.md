@@ -9,12 +9,22 @@ Retrieve all the competitions for a COUNTRY using:
 `python src/functions.py fetch-competitions "COUNTRY"`
 
 ## Show Competitions
-show all competitions for a country
-optional league/cup input
+Display all the competitions for a COUNTRY_NAME using:
+
+`python src/functions.py show-competitions --country "COUNTRY_NAME"`
+
+Display all the competitions for a COMPETITION_TYPE (League or Cup) using:
+
+`python src/functions.py show-competitions --type "COMPETITION_TYPE"`
+
+Display all the competitions for a COUNTRY_NAME and COMPETITION_TYPE (League or Cup) using:
+
+`python src/functions.py show-competitions --country "COUNTRY_NAME" --type "COMPETITION_TYPE"`
 
 ## Show Countries
-show all countries in table
+Display all the countries using:
 
+`python src/functions.py show-countries`
 
 ## Fetch Teams
 Retrieve all the teams for a COMPETITION_NAME and YEAR using:
@@ -42,7 +52,7 @@ Retrieve the standings/league table for a league COMPETITION_NAME and YEAR using
 `python src/functions.py fetch-standings "COMPETITION_NAME" YEAR`
 
 ## Show Standings
-Show the standings/league table for a league COMPETITION_NAME and YEAR using:
+Display the standings/league table for a league COMPETITION_NAME and YEAR using:
 
 `python src/functions.py show-standings "COMPETITION_NAME" YEAR`
 
