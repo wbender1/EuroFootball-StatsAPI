@@ -39,7 +39,7 @@ def print_comps(session: Session, country_name):
         "Name", "Type", "Logo"
     ]
 
-    console.print(f"\n[bold]{country.country_name} Competitions")
+    console.print(f"\n[bold] All[/bold] [bold]Competitions for[/bold] [green]{country.country_name}")
     print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 # Display all League or Cup Competitions for a Country
@@ -66,7 +66,7 @@ def print_country_type_comps(session: Session, country_name, comp_type):
         "Name", "Logo"
     ]
 
-    console.print(f"\n[bold]{country.country_name} {comp_type} Competitions")
+    console.print(f"\n[bold] All[/bold] [green]{comp_type}[/green] [bold]Competitions for[/bold] [green]{country.country_name}")
     print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 # Display all League or Cup Competitions for all Countries
@@ -92,7 +92,7 @@ def print_type_comps(session: Session, comp_type):
         "Name", "Country", "Logo"
     ]
 
-    console.print(f"\n[bold]{comp_type} Competitions")
+    console.print(f"\n[green]{comp_type}[/green] [bold]Competitions for all Countries")
     print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 
@@ -100,7 +100,7 @@ def print_type_comps(session: Session, comp_type):
 
 # Display all Countries
 def print_countries(session: Session):
-    # Find Country
+    # Find Countries
     countries_stmt = select(Country).order_by(Country.country_name)
     countries = session.exec(countries_stmt).all()
     if not countries:
@@ -177,7 +177,8 @@ def print_fixtures(session: Session, competition_name: str, year: int):
         headers = [
             "Match Day", "Date", "Home Team", "Home Score", "Away Team", "Away Score", "Referee"
         ]
-        console.print(f"\n[bold]Fixtures for {year}.")
+        console.print(f"\n[bold]Fixtures from the[/bold] "
+                      f"[green]{year} {competition_name}[/green] [bold]season")
         print(tabulate(data, headers=headers, tablefmt="pretty"))
 
     else:
@@ -194,7 +195,8 @@ def print_fixtures(session: Session, competition_name: str, year: int):
         headers = [
             "Round", "Date", "Home Team", "Home Score", "Away Team", "Away Score", "Referee"
         ]
-        console.print(f"\n[bold]Fixtures for {year}")
+        console.print(f"\n[bold]Fixtures from the[/bold] "
+                      f"[green]{year} {competition_name}[/green] [bold]season")
         print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 
@@ -255,7 +257,8 @@ def print_team_fixtures(session: Session, competition_name: str, year: int, team
         headers = [
             "Match Day", "Date", "Home Team", "Home Score", "Away Team", "Away Score", "Referee"
         ]
-        console.print(f"\n[bold]Fixtures for {year} {team_name} {competition_name}")
+        console.print(f"\n[bold]Fixtures for[/bold] [green]{team_name}[/green] [bold]from the[/bold] "
+                      f"[green]{year} {competition_name}[/green] [bold]season")
         print(tabulate(data, headers=headers, tablefmt="pretty"))
 
     else:
@@ -272,7 +275,8 @@ def print_team_fixtures(session: Session, competition_name: str, year: int, team
         headers = [
             "Round", "Date", "Home Team", "Home Score", "Away Team", "Away Score", "Referee"
         ]
-        console.print(f"\n[bold]Fixtures for {year} {team_name} {competition_name}")
+        console.print(f"\n[bold]Fixtures for[/bold] [green]{team_name}[/green] [bold]from the[/bold] "
+                      f"[green]{year} {competition_name}[/green] [bold]season")
         print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 
@@ -337,7 +341,9 @@ def print_fixture_stats(session: Session, competition_name: str, year: int, team
             fixture.referee,
             venue.name
         ])
-        console.print(f"\n[bold]Fixture stats for {home_team_name} vs. {away_team_name} on {fixture.date}")
+        console.print(f"\n[bold]Fixture stats for[/bold] [green]{home_team_name}[/green] " 
+                      f" [bold]vs.[/bold] [green]{away_team_name}[/green] " 
+                      f"[bold]on[/bold] [green]{fixture.date}[/green]")
         print(tabulate(data, headers=headers, tablefmt="pretty"))
         stats = []
         headers_stats = [f'{home_team_name}', '', f'{away_team_name}']
@@ -365,16 +371,166 @@ def print_fixture_stats(session: Session, competition_name: str, year: int, team
 #**********************************     Seasons         *************************************#
 
 # Display all Seasons
-def print_seasons():
-    console.print('Function not added')
+def print_seasons(session: Session):
+    # Find Seasons
+    season_stmt = (
+        select(Season, Competition, Country)
+        .outerjoin(Competition, Competition.comp_api_id == Season.league_id)
+        .outerjoin(Country, Country.id == Competition.comp_country_id)
+        .order_by(Season.year)
+        .order_by(Competition.comp_type.desc())
+        .order_by(Competition.comp_name))
+    seasons = session.exec(season_stmt).all()
+    if not seasons:
+        raise ValueError(f'No Seasons found.')
+    # Print Table
+    data = []
+    for season, competition, country in seasons:
+        data.append([
+            season.year,
+            country.country_name,
+            competition.comp_name,
+            competition.comp_type,
+            season.total_teams
+        ])
+    headers = [
+        "Year", "Country", "Competition", "Type", "Total Teams"
+    ]
+
+    console.print(f"\n[bold]All Seasons")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 # Display Seasons for a Competition
-def print_comp_seasons():
-    console.print('Function not added')
+def print_comp_seasons(session: Session, competition_name: str):
+    # Find Competition
+    comp_stmt = select(Competition).where(Competition.comp_name == competition_name)
+    competition = session.exec(comp_stmt).first()
+    if not competition:
+        raise ValueError(f'{competition_name} Competition not found.')
+    # Find Seasons
+    season_stmt = (
+        select(Season, Competition, Country).where(Competition.comp_api_id == competition.comp_api_id)
+        .outerjoin(Competition, Competition.comp_api_id == Season.league_id)
+        .outerjoin(Country, Country.id == Competition.comp_country_id)
+        .order_by(Season.year)
+        .order_by(Competition.comp_type.desc()))
+    seasons = session.exec(season_stmt).all()
+    if not seasons:
+        raise ValueError(f'No Seasons found for {competition_name} Competition.')
+    # Print Table
+    data = []
+    for season, competition, country in seasons:
+        data.append([
+            season.year,
+            season.total_teams
+        ])
+    headers = [
+        "Year", "Total Teams"
+    ]
+
+    console.print(
+        f"\n[bold]Country:[/bold] [green]{seasons[0].Country.country_name}[/green], "
+        f"[bold]Competition:[/bold] [green]{competition_name}[/green], "
+        f"[bold]Type:[/bold] [green]{seasons[0].Competition.comp_type}[/green]")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 # Display Seasons for a Year
-def print_year_seasons():
-    console.print('Function not added')
+def print_year_seasons(session: Session, year: int):
+    # Find Seasons
+    season_stmt = (
+        select(Season, Competition, Country).where(Season.year == year)
+        .outerjoin(Competition, Competition.comp_api_id == Season.league_id)
+        .outerjoin(Country, Country.id == Competition.comp_country_id)
+        .order_by(Country.country_name)
+        .order_by(Competition.comp_type.desc())
+        .order_by(Competition.comp_name))
+    seasons = session.exec(season_stmt).all()
+    if not seasons:
+        raise ValueError(f'No Seasons found for {year}.')
+    # Print Table
+    data = []
+    for season, competition, country in seasons:
+        data.append([
+            country.country_name,
+            competition.comp_name,
+            competition.comp_type,
+            season.total_teams
+        ])
+    headers = [
+        "Country", "Competition", "Type", "Total Teams"
+    ]
+
+    console.print(
+        f"\n[bold]All Seasons for[/bold] [green]{year}")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
+
+# Display Seasons for a Country
+def print_country_seasons(session: Session, country_name: str):
+    # Find Country
+    country_stmt = select(Country).where(Country.country_name == country_name)
+    country = session.exec(country_stmt).first()
+    if not country:
+        raise ValueError(f'{country_name} not found.')
+    # Find Seasons
+    season_stmt = (
+        select(Season, Competition, Country).where(Country.id == country.id)
+        .outerjoin(Competition, Competition.comp_api_id == Season.league_id)
+        .outerjoin(Country, Country.id == Competition.comp_country_id)
+        .order_by(Competition.comp_type.desc())
+        .order_by(Competition.comp_name))
+    seasons = session.exec(season_stmt).all()
+    if not seasons:
+        raise ValueError(f'No Seasons found for {country_name}.')
+    # Print Table
+    data = []
+    for season, competition, country in seasons:
+        data.append([
+            season.year,
+            competition.comp_name,
+            competition.comp_type,
+            season.total_teams
+        ])
+    headers = [
+        "Year", "Competition", "Type", "Total Teams"
+    ]
+
+    console.print(
+        f"\n[bold]All Seasons from[/bold] [green]{country_name}")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
+
+# Display Seasons for a Year and Country
+def print_year_country_seasons(session: Session, year: int, country_name: str):
+    # Find Country
+    country_stmt = select(Country).where(Country.country_name == country_name)
+    country = session.exec(country_stmt).first()
+    if not country:
+        raise ValueError(f'{country_name} not found.')
+    # Find Seasons
+    season_stmt = (
+        select(Season, Competition, Country).where(
+            (Season.year == year) & (Country.id == country.id))
+        .outerjoin(Competition, Competition.comp_api_id == Season.league_id)
+        .outerjoin(Country, Country.id == Competition.comp_country_id)
+        .order_by(Competition.comp_type.desc())
+        .order_by(Competition.comp_name))
+    seasons = session.exec(season_stmt).all()
+    if not seasons:
+        raise ValueError(f'No Seasons found for {year}.')
+    # Print Table
+    data = []
+    for season, competition, country in seasons:
+        data.append([
+            competition.comp_name,
+            competition.comp_type,
+            season.total_teams
+        ])
+    headers = [
+        "Competition", "Type", "Total Teams"
+    ]
+
+    console.print(
+        f"\n[bold]All Seasons from[/bold] [green]{country_name}[/green] [bold]for[/bold] [green]{year}")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 
 #**********************************     Standings       *************************************#
@@ -424,7 +580,7 @@ def print_standings_table(session: Session, competition_name: str, year: int):
         "", "Team", "GP", "W", "D", "L", "F", "A", "GD", "P"
     ]
 
-    console.print(f"\n[bold]Standings for {year} {competition_name}")
+    console.print(f"\n[bold]Standings for[/bold] [green]{year} {competition_name}[/green]")
     print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 

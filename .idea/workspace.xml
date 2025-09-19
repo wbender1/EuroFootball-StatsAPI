@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="60a0b875-b0f8-4623-bdd2-74095499f552" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/USAGE.md" beforeDir="false" afterPath="$PROJECT_DIR$/USAGE.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/display_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/display_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/functions.py" afterDir="false" />
     </list>
@@ -30,12 +31,12 @@
     &quot;assignee&quot;: &quot;wbender1&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/wbender1/ManUtd-Stats.git&quot;,
-    &quot;accountId&quot;: &quot;70ec9970-4322-480c-b6cf-fc942a986f32&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/wbender1/EuroFootball-StatsAPI.git",
+    "accountId": "70ec9970-4322-480c-b6cf-fc942a986f32"
   }
-}</component>
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 1
 }</component>

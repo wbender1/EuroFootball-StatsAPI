@@ -31,6 +31,27 @@ Retrieve all the teams for a COMPETITION_NAME and YEAR using:
 
 `python src/functions.py fetch-teams "COMPETITION_NAME" YEAR`
 
+## Show Seasons
+Display all seasons using:
+
+`python src/functions.py show-seasons`
+
+Display all seasons for a YEAR using:
+
+`python src/functions.py show-seasons --year YEAR`
+
+Display all seasons for a COMPETITION_NAME using:
+
+`python src/functions.py show-seasons --competition COMPETITION_NAME`
+
+Display all seasons for a COUNTRY_NAME using:
+
+`python src/functions.py show-seasons --country COUNTRY_NAME`
+
+Display all seasons for a COUNTRY_NAME from a YEAR using:
+
+`python src/functions.py show-seasons --year YEAR --country COUNTRY_NAME`
+
 ## Show Teams
 show all seasons
 optional competition input
@@ -40,11 +61,6 @@ optional year input
 show all venues
 optional country input
 optional competition & year input
-
-## Show Seasons
-show all seasons
-optional competition input
-optional year input
 
 ## Fetch Standings
 Retrieve the standings/league table for a league COMPETITION_NAME and YEAR using:

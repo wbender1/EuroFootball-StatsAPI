@@ -13,9 +13,9 @@ import time
 from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
 # Import print functions
 from display_utils import (print_comps, print_country_type_comps, print_type_comps, print_countries, print_fixtures,
-                           print_team_fixtures, print_fixture_stats, print_seasons, print_comp_seasons, print_year_seasons,
-                           print_standings_table, print_teams, print_comp_teams, print_venues, print_country_venues,
-                           print_comp_venues)
+                           print_team_fixtures, print_fixture_stats, print_seasons, print_comp_seasons, print_country_seasons,
+                           print_year_seasons, print_year_country_seasons, print_standings_table, print_teams,
+                           print_comp_teams, print_venues, print_country_venues, print_comp_venues)
 from database import engine
 import config
 
@@ -624,13 +624,33 @@ def show_competitions(country_name: Optional[str] = typer.Option(None, "--countr
     with Session(engine) as session:
         if comp_type and country_name:
             print_country_type_comps(session, country_name, comp_type)
+            return
         if comp_type:
             print_type_comps(session, comp_type)
+            return
         else:
             print_comps(session, country_name)
 
 # Show Seasons
-
+@ app.command()
+def show_seasons(competition_name: Optional[str] = typer.Option(None, "--competition", "-c"),
+                 year: Optional[int] = typer.Option(None, "--year", "-y"),
+                 country_name: Optional[str] = typer.Option(None, "--country")):
+    with Session(engine) as session:
+        if country_name and year:
+            print_year_country_seasons(session, year, country_name)
+            return
+        if competition_name:
+            print_comp_seasons(session, competition_name)
+            return
+        if year:
+            print_year_seasons(session, year)
+            return
+        if country_name:
+            print_country_seasons(session, country_name)
+            return
+        else:
+            print_seasons(session)
 
 # Show Teams
 
