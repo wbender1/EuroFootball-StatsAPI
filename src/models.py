@@ -17,6 +17,7 @@ class Country(SQLModel, table=True):
 class Competition(SQLModel, table=True):
     comp_api_id: int = Field(primary_key=True)
     comp_country_id: int = Field(foreign_key="country.id")
+    country_name: str = Field(foreign_key="country.country_name")
     comp_name: str
     comp_type: str
     comp_logo: str
@@ -27,6 +28,8 @@ class Venue(SQLModel, table=True):
     name: Optional[str] = Field(default=None)
     address: Optional[str] = Field(default=None)
     city: Optional[str] = Field(default=None)
+    country: str
+    country_id: int
     capacity: Optional[int] = Field(default=None)
     surface: Optional[str] = Field(default=None)
     image: Optional[str] = Field(default=None)
@@ -37,6 +40,7 @@ class Team(SQLModel, table=True):
     name: str
     short_name: Optional[str] = Field(default=None)
     country: str
+    country_id: int = Field(foreign_key="country.id")
     founded: Optional[int] = Field(default=None)
     national: bool
     logo_url: str
@@ -48,6 +52,10 @@ class Season(SQLModel, table=True):
     league_id: int = Field(foreign_key="competition.comp_api_id")
     total_teams: int
     __table_args__ = (UniqueConstraint("year", "league_id"),)
+
+# Define TeamVenue Model, links Team and Venue with Season and Competition
+
+
 
 # Define Standing Model, links to Team and Season
 class Standing(SQLModel, table=True):

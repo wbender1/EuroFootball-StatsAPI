@@ -587,13 +587,47 @@ def print_standings_table(session: Session, competition_name: str, year: int):
 #**********************************     Teams           *************************************#
 
 # Display all Teams
-def print_teams():
+def print_teams(session: Session):
+    # Find Teams
+    teams_stmt = select(Team).order_by(Team.country).order_by(Team.name)
+    teams = session.exec(teams_stmt).all()
+    # Print Table
+    data = []
+    for team in teams:
+        if team.national == 0:
+            type = "Club"
+        elif team.national == 1:
+            type = "National"
+        data.append([
+            team.country,
+            team.name,
+            team.short_name,
+            team.founded,
+
+        ])
+    headers = [
+        "Country", "Name", "Short Name", "Founded", "Type", "Logo"
+    ]
+
+    console.print(f"\n[bold]Standings for[/bold] [green]{year} {competition_name}[/green]")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
+
+# Display all Teams for a Country
+def print_teams_country(session: Session, country_name: str):
     console.print('Function not added')
 
-# Display Teams for a Competition and Year
-def print_comp_teams():
+# Display Teams for a Season (Competition and Year)
+def print_teams_season(session: Session, competition_name: str, year: int):
     console.print('Function not added')
 
+
+# Display all National Teams
+def print_national_teams(session: Session):
+    console.print('Function not added')
+
+# Display National Teams for a Season (Competition and Year)
+def print_national_teams_season(session: Session, competition_name: str, year: int):
+    console.print('Function not added')
 
 #**********************************     Venues          *************************************#
 
@@ -602,10 +636,10 @@ def print_venues():
     console.print('Function not added')
 
 # Display all Venues for a Country
-def print_country_venues():
+def print_venues_country():
     console.print('Function not added')
 
-# Display Venues for a Competition and Year
-def print_comp_venues():
+# Display Venues for a Season (Competition and Year)
+def print_venues_season():
     console.print('Function not added')
 
