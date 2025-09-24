@@ -1,5 +1,9 @@
 import config
 import requests
+from rich.console import Console
+
+console = Console()
+
 
 def api_request(url: str, params: dict = None):
     headers = {

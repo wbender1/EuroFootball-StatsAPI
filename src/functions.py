@@ -22,7 +22,8 @@ from database import engine
 import config
 from api_request import api_request
 
-from fetch_functions import (make_country, fetch_competitions, fetch_teams, fetch_venues)
+from helper_functions import (make_country, fetch_competitions, fetch_teams, fetch_venues, make_season, fetch_standings,
+                              fetch_fixtures, make_meta_join_table)
 
 # Create Typer app and console
 app = typer.Typer()
@@ -35,10 +36,7 @@ def init_db():
     SQLModel.metadata.create_all(engine)
     console.print("Database tables created!", style="green")
 
-
 #**********************************     Fetch Data Functions    *************************************#
-
-
 # Fetch Country
 @app.command()
 def fetch_country(input_country_name: str):
@@ -58,6 +56,23 @@ def fetch_country(input_country_name: str):
         headers = ["Entity", "Added Count"]
         console.print(f"\n[bold]Data added for[/bold] [green]{input_country_name}")
         print(tabulate(summary_table, headers=headers, tablefmt="pretty"))
+
+
+# Fetch Season
+@app.command()
+def fetch_season(competition_name: str, year: int):
+    with Session(engine) as session:
+        # Find or Make Season
+        season, competition = make_season(session, competition_name, year)
+        if competition.comp_type == 'League':
+            fetch_standings(session, season, competition)
+        else:
+            console.print(f'No Standings Data for League Competitions.', style="yellow")
+        # Find Fixtures
+        fetch_fixtures(session, season, competition)
+        # Make Team-Season Join Table Entries
+        make_meta_join_table(session, season)
+
 
 #**********************************     Show Data Functions     *************************************#
 # Show Countries

@@ -50,11 +50,15 @@ class Season(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     year: int
     league_id: int = Field(foreign_key="competition.comp_api_id")
-    total_teams: int
     __table_args__ = (UniqueConstraint("year", "league_id"),)
 
-# Define TeamVenue Model, links Team and Venue with Season and Competition
-
+# Define TeamSeasonCompetition Model, links Team and Venue with Season and Competition
+class TeamSeasonCompetition(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    team_id: int = Field(foreign_key="team.team_api_id")
+    season_id: int = Field(foreign_key="season.id")
+    competition_id: int = Field(foreign_key="competition.comp_api_id")
+    venue_id: Optional[int] = Field(foreign_key="venue.venue_api_id")
 
 
 # Define Standing Model, links to Team and Season
