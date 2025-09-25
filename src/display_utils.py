@@ -5,15 +5,18 @@ from tabulate import tabulate
 from sqlalchemy.orm import aliased
 
 # Import Models
-from models import Competition, Country, Fixture, FixtureStats, Season, Standing, Team,  Venue
+from models import (Competition, Country, Fixture, FixtureStats, Season, Standing, Team,
+                    TeamSeasonCompetition, Venue)
 
 # Create console
 console = Console()
 
 #**********************************     Competitions    *************************************#
+# Display all Competitions
+
 
 # Display all Competitions for a Country
-def print_comps(session: Session, country_name):
+def print_country_comps(session: Session, country_name):
     # Find Country
     country_stmt = select(Country).where(Country.country_name == country_name)
     country = session.exec(country_stmt).first()
@@ -390,11 +393,10 @@ def print_seasons(session: Session):
             season.year,
             country.country_name,
             competition.comp_name,
-            competition.comp_type,
-            season.total_teams
+            competition.comp_type
         ])
     headers = [
-        "Year", "Country", "Competition", "Type", "Total Teams"
+        "Year", "Country", "Competition", "Type"
     ]
 
     console.print(f"\n[bold]All Seasons")
@@ -421,47 +423,16 @@ def print_comp_seasons(session: Session, competition_name: str):
     data = []
     for season, competition, country in seasons:
         data.append([
-            season.year,
-            season.total_teams
+            season.year
         ])
     headers = [
-        "Year", "Total Teams"
+        "Year"
     ]
 
     console.print(
         f"\n[bold]Country:[/bold] [green]{seasons[0].Country.country_name}[/green], "
         f"[bold]Competition:[/bold] [green]{competition_name}[/green], "
         f"[bold]Type:[/bold] [green]{seasons[0].Competition.comp_type}[/green]")
-    print(tabulate(data, headers=headers, tablefmt="pretty"))
-
-# Display Seasons for a Year
-def print_year_seasons(session: Session, year: int):
-    # Find Seasons
-    season_stmt = (
-        select(Season, Competition, Country).where(Season.year == year)
-        .outerjoin(Competition, Competition.comp_api_id == Season.league_id)
-        .outerjoin(Country, Country.id == Competition.comp_country_id)
-        .order_by(Country.country_name)
-        .order_by(Competition.comp_type.desc())
-        .order_by(Competition.comp_name))
-    seasons = session.exec(season_stmt).all()
-    if not seasons:
-        raise ValueError(f'No Seasons found for {year}.')
-    # Print Table
-    data = []
-    for season, competition, country in seasons:
-        data.append([
-            country.country_name,
-            competition.comp_name,
-            competition.comp_type,
-            season.total_teams
-        ])
-    headers = [
-        "Country", "Competition", "Type", "Total Teams"
-    ]
-
-    console.print(
-        f"\n[bold]All Seasons for[/bold] [green]{year}")
     print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 # Display Seasons for a Country
@@ -487,15 +458,43 @@ def print_country_seasons(session: Session, country_name: str):
         data.append([
             season.year,
             competition.comp_name,
-            competition.comp_type,
-            season.total_teams
+            competition.comp_type
         ])
     headers = [
-        "Year", "Competition", "Type", "Total Teams"
+        "Year", "Competition", "Type"
     ]
 
     console.print(
         f"\n[bold]All Seasons from[/bold] [green]{country_name}")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
+
+# Display Seasons for a Year
+def print_year_seasons(session: Session, year: int):
+    # Find Seasons
+    season_stmt = (
+        select(Season, Competition, Country).where(Season.year == year)
+        .outerjoin(Competition, Competition.comp_api_id == Season.league_id)
+        .outerjoin(Country, Country.id == Competition.comp_country_id)
+        .order_by(Country.country_name)
+        .order_by(Competition.comp_type.desc())
+        .order_by(Competition.comp_name))
+    seasons = session.exec(season_stmt).all()
+    if not seasons:
+        raise ValueError(f'No Seasons found for {year}.')
+    # Print Table
+    data = []
+    for season, competition, country in seasons:
+        data.append([
+            country.country_name,
+            competition.comp_name,
+            competition.comp_type
+        ])
+    headers = [
+        "Country", "Competition", "Type"
+    ]
+
+    console.print(
+        f"\n[bold]All Seasons for[/bold] [green]{year}")
     print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 # Display Seasons for a Year and Country
@@ -521,11 +520,10 @@ def print_year_country_seasons(session: Session, year: int, country_name: str):
     for season, competition, country in seasons:
         data.append([
             competition.comp_name,
-            competition.comp_type,
-            season.total_teams
+            competition.comp_type
         ])
     headers = [
-        "Competition", "Type", "Total Teams"
+        "Competition", "Type"
     ]
 
     console.print(
@@ -589,45 +587,208 @@ def print_standings_table(session: Session, competition_name: str, year: int):
 # Display all Teams
 def print_teams(session: Session):
     # Find Teams
-    teams_stmt = select(Team).order_by(Team.country).order_by(Team.name)
+    teams_stmt = select(Team).order_by(Team.country).order_by(Team.national).order_by(Team.name)
     teams = session.exec(teams_stmt).all()
+    if not teams:
+        raise ValueError(f'No teams found.')
     # Print Table
     data = []
     for team in teams:
         if team.national == 0:
-            type = "Club"
-        elif team.national == 1:
-            type = "National"
+            nat_type = "Club"
+        else:
+            nat_type = "National"
         data.append([
             team.country,
             team.name,
             team.short_name,
             team.founded,
-
+            nat_type,
+            team.logo_url
         ])
     headers = [
         "Country", "Name", "Short Name", "Founded", "Type", "Logo"
     ]
 
-    console.print(f"\n[bold]Standings for[/bold] [green]{year} {competition_name}[/green]")
+    console.print(f"\n[bold]All Teams")
     print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 # Display all Teams for a Country
 def print_teams_country(session: Session, country_name: str):
-    console.print('Function not added')
+    # Find Teams
+    teams_stmt = select(Team).where(
+        Team.country == country_name
+    ).order_by(Team.national).order_by(Team.name)
+    teams = session.exec(teams_stmt).all()
+    if not teams:
+        raise ValueError(f'[bold]No teams found for country: [/bold] [green]{country_name}.')
+    # Print Table
+    data = []
+    for team in teams:
+        if team.national == 0:
+            nat_type = "Club"
+        else:
+            nat_type = "National"
+        data.append([
+            team.name,
+            team.short_name,
+            team.founded,
+            nat_type,
+            team.logo_url
+        ])
+    headers = [
+        "Name", "Short Name", "Founded", "Type", "Logo"
+    ]
+
+    console.print(f"\n[bold]All Teams from[/bold] [green]{country_name}")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
+
+# Display all Teams from a Competition
+def print_teams_competition(session: Session, competition_name: str):
+    # Find Competition
+    comp_stmt = select(Competition).where(Competition.comp_name == competition_name)
+    competition = session.exec(comp_stmt).first()
+    if not competition:
+        raise ValueError(f'[bold]Could not find competition: [/bold] [green]{competition_name}.')
+    # Find Teams
+    teams_stmt = (select(Team)
+                  .join(TeamSeasonCompetition, TeamSeasonCompetition.team_id == Team.team_api_id)
+                  .where(TeamSeasonCompetition.competition_id == competition.comp_api_id)
+                  .distinct(Team.team_api_id)
+                  .order_by(Team.country).order_by(Team.national).order_by(Team.name))
+    teams = session.exec(teams_stmt).all()
+    if not teams:
+        raise ValueError(f'[bold]No teams found for country: [/bold] [green]{competition_name}.')
+    # Print Table
+    data = []
+    for team in teams:
+        data.append([
+            team.country,
+            team.name,
+            team.short_name,
+            team.founded,
+            team.logo_url
+        ])
+    headers = [
+        "Country", "Name", "Short Name", "Founded", "Logo"
+    ]
+
+    if competition.country_name == 'World':
+        nat_type = "National"
+    else:
+        nat_type = "Club"
+    console.print(f"\n[bold]All {nat_type} Teams from[/bold] [green]{competition_name}")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
+
+# Display Teams for a Year
+def print_teams_year(session: Session, year: int):
+    # Find Seasons
+    season_stmt = select(Season).where(
+        (Season.year == year) & (Season.year == year)
+    )
+    seasons = session.exec(season_stmt).all()
+    if not seasons:
+        raise ValueError(f'[bold]No season found for year: [/bold] [green]{year}.')
+    data = []
+    for season in seasons:
+        # Find Teams
+        teams_stmt = (select(Team)
+                      .join(TeamSeasonCompetition, TeamSeasonCompetition.team_id == Team.team_api_id)
+                      .where(TeamSeasonCompetition.season_id == season.id)
+                      .order_by(Team.country).order_by(Team.national).order_by(Team.name))
+        teams = session.exec(teams_stmt).all()
+        if not teams:
+            raise ValueError(f'[bold]No teams found for [/bold] [green]{year}.')
+        # Print Table
+        for team in teams:
+            if team.national == 0:
+                nat_type = "Club"
+            else:
+                nat_type = "National"
+            data.append([
+                team.country,
+                team.name,
+                team.short_name,
+                team.founded,
+                nat_type,
+                team.logo_url
+            ])
+    headers = [
+        "Country", "Name", "Short Name", "Founded", "Type", "Logo"
+    ]
+
+    console.print(f"\n[bold]All Teams from[/bold] [green]{year}")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 # Display Teams for a Season (Competition and Year)
 def print_teams_season(session: Session, competition_name: str, year: int):
-    console.print('Function not added')
+    # Find Competition
+    comp_stmt = select(Competition).where(Competition.comp_name == competition_name)
+    competition = session.exec(comp_stmt).first()
+    if not competition:
+        raise ValueError(f'[bold]Could not find competition: [/bold] [green]{competition_name}.')
+    # Find Season
+    season_stmt = select(Season).where(
+        (Season.year == year) & (Season.league_id == competition.comp_api_id)
+    )
+    season = session.exec(season_stmt).first()
+    if not season:
+        raise ValueError(f'[bold]No season found for [/bold] [green]{year} {competition_name}.')
+    # Find Teams
+    teams_stmt = (select(Team)
+                  .join(TeamSeasonCompetition, TeamSeasonCompetition.team_id == Team.team_api_id)
+                  .where(TeamSeasonCompetition.season_id == season.id)
+                  .order_by(Team.country).order_by(Team.national).order_by(Team.name))
+    teams = session.exec(teams_stmt).all()
+    if not teams:
+        raise ValueError(f'[bold]No teams found for [/bold] [green]{year} {competition_name}.')
+    # Print Table
+    data = []
+    for team in teams:
+        data.append([
+            team.country,
+            team.name,
+            team.short_name,
+            team.founded,
+            team.logo_url
+        ])
+    headers = [
+        "Country", "Name", "Short Name", "Founded", "Logo"
+    ]
+
+    if competition.country_name == 'World':
+        nat_type = "National"
+    else:
+        nat_type = "Club"
+    console.print(f"\n[bold]All {nat_type} Teams from[/bold] [green]{year} {competition_name}")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
 
 
 # Display all National Teams
 def print_national_teams(session: Session):
-    console.print('Function not added')
+    # Find Teams
+    teams_stmt = (select(Team).where(Team.national == 1)
+                  .order_by(Team.country).order_by(Team.national).order_by(Team.name))
+    teams = session.exec(teams_stmt).all()
+    if not teams:
+        raise ValueError(f'No teams found.')
+    # Print Table
+    data = []
+    for team in teams:
+        data.append([
+            team.country,
+            team.name,
+            team.short_name,
+            team.founded,
+            team.logo_url
+        ])
+    headers = [
+        "Country", "Name", "Short Name", "Founded", "Logo"
+    ]
 
-# Display National Teams for a Season (Competition and Year)
-def print_national_teams_season(session: Session, competition_name: str, year: int):
-    console.print('Function not added')
+    console.print(f"\n[bold]All[/bold] [green]National Teams")
+    print(tabulate(data, headers=headers, tablefmt="pretty"))
+
 
 #**********************************     Venues          *************************************#
 

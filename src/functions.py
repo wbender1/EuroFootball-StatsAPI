@@ -13,10 +13,13 @@ from tabulate import tabulate
 # Import modules
 from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
 # Import print functions
-from display_utils import (print_comps, print_country_type_comps, print_type_comps, print_countries, print_fixtures,
-                           print_team_fixtures, print_fixture_stats, print_seasons, print_comp_seasons, print_country_seasons,
-                           print_year_seasons, print_year_country_seasons, print_standings_table, print_teams,
-                           print_teams_country, print_teams_season, print_national_teams, print_national_teams_season,
+from display_utils import (print_country_comps, print_country_type_comps, print_type_comps,
+                           print_countries,
+                           print_fixtures, print_team_fixtures, print_fixture_stats,
+                           print_seasons, print_comp_seasons, print_country_seasons, print_year_seasons, print_year_country_seasons,
+                           print_standings_table,
+                           print_teams, print_teams_country, print_teams_competition, print_teams_year, print_teams_season,
+                           print_national_teams, print_national_teams_season,
                            print_venues, print_venues_country, print_venues_season)
 from database import engine
 import config
@@ -93,7 +96,7 @@ def show_competitions(country_name: Optional[str] = typer.Option(None, "--countr
             print_type_comps(session, comp_type)
             return
         else:
-            print_comps(session, country_name)
+            print_country_comps(session, country_name)
 
 # Show Seasons
 @ app.command()
@@ -123,19 +126,28 @@ def show_teams(competition_name: Optional[str] = typer.Option(None, "--competiti
                  country_name: Optional[str] = typer.Option(None, "--country"),
                national: bool = typer.Option(False, "--national", help="Show only national teams")):
     with Session(engine) as session:
-        if national and competition_name and year:
-            print_national_teams_season(session, competition_name, year)
-            return
         if national:
+            # Display all National Teams
             print_national_teams(session)
             return
         if competition_name and year:
+            # Display Teams for a Season (Competition and Year) (Works for both Club and National)
             print_teams_season(session, competition_name, year)
             return
+        if year:
+            # Display all Teams from a Year
+            print_teams_year(session, year)
+            return
+        if competition_name:
+            # Display all Teams from a Competition (Works for both Club and National)
+            print_teams_competition(session, competition_name)
+            return
         if country_name:
+            # Display all Teams for a Country
             print_teams_country(session, country_name)
             return
         else:
+            # Display all Teams
             print_teams(session)
 
 # Show Venues
