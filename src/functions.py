@@ -13,20 +13,22 @@ from tabulate import tabulate
 # Import modules
 from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
 # Import print functions
-from display_utils import (print_country_comps, print_country_type_comps, print_type_comps,
+from display_utils import (print_comps, print_comps_country, print_comps_country_type, print_comps_type,
                            print_countries,
-                           print_fixtures, print_team_fixtures, print_fixture_stats,
-                           print_seasons, print_comp_seasons, print_country_seasons, print_year_seasons, print_year_country_seasons,
+                           print_fixtures_season, print_fixtures_season_team,
+                           print_fixture_stats_team, print_fixture_stats_two_teams,
+                           print_seasons, print_seasons_comp, print_seasons_country, print_seasons_year, print_seasons_year_country,
                            print_standings_table,
                            print_teams, print_teams_country, print_teams_competition, print_teams_year, print_teams_season,
-                           print_national_teams, print_national_teams_season,
+                           print_teams_national,
                            print_venues, print_venues_country, print_venues_season)
 from database import engine
 import config
 from api_request import api_request
 
-from helper_functions import (make_country, fetch_competitions, fetch_teams, fetch_venues, make_season, fetch_standings,
-                              fetch_fixtures, make_meta_join_table)
+from helper_functions import (make_country, fetch_competitions, fetch_teams, fetch_venues,
+                              make_season, fetch_standings, fetch_fixtures, make_meta_join_table,
+                              fetch_fixture_stats_team, fetch_fixture_stats_team_season)
 
 # Create Typer app and console
 app = typer.Typer()
@@ -76,27 +78,69 @@ def fetch_season(competition_name: str, year: int):
         # Make Team-Season Join Table Entries
         make_meta_join_table(session, season)
 
+# Fetch Fixture Statistics
+@app.command()
+def fetch_fixture_stats(year: int, team_name: str, competition_name: Optional[str] = typer.Argument(None)):
+    with Session(engine) as session:
+        if competition_name:
+            fetch_fixture_stats_team_season(session, year, team_name, competition_name)
+            return
+        else:
+            fetch_fixture_stats_team(session, year, team_name)
+
 
 #**********************************     Show Data Functions     *************************************#
-# Show Countries
-@ app.command()
-def show_countries():
-    with Session(engine) as session:
-        print_countries(session)
-
 # Show Competitions
 @ app.command()
 def show_competitions(country_name: Optional[str] = typer.Option(None, "--country", "-c"),
                       comp_type: Optional[str] = typer.Option(None, "--type", "-t")):
     with Session(engine) as session:
         if comp_type and country_name:
-            print_country_type_comps(session, country_name, comp_type)
+            # Display all League or Cup Competitions for a Country
+            print_comps_country_type(session, country_name, comp_type)
             return
         if comp_type:
-            print_type_comps(session, comp_type)
+            # Display all League or Cup Competitions for all Countries
+            print_comps_type(session, comp_type)
+            return
+        if country_name:
+            # Display all Competitions for a Country
+            print_comps_country(session, country_name)
             return
         else:
-            print_country_comps(session, country_name)
+            # Display all Competitions
+            print_comps(session)
+
+
+# Show Countries
+@ app.command()
+def show_countries():
+    with Session(engine) as session:
+        # Display all Countries
+        print_countries(session)
+
+
+# Show Fixtures function
+@app.command()
+def show_fixtures(competition_name: str, year: int, team_name: Optional[str] = typer.Argument(None)):
+    with Session(engine) as session:
+        if team_name:
+            print_fixtures_season_team(session, competition_name, year, team_name)
+            return
+        else:
+            print_fixtures_season(session, competition_name, year)
+
+
+# Show Fixture Stats function
+@app.command()
+def show_fixture_stats(competition_name: str, year: int,
+                       team_name1: str, team_name2: Optional[str] = typer.Argument(None)):
+    with Session(engine) as session:
+        if team_name2:
+            print_fixture_stats_two_teams(session, competition_name, year, team_name1, team_name2)
+        else:
+            print_fixture_stats_team(session, competition_name, year, team_name1)
+
 
 # Show Seasons
 @ app.command()
@@ -105,19 +149,32 @@ def show_seasons(competition_name: Optional[str] = typer.Option(None, "--competi
                  country_name: Optional[str] = typer.Option(None, "--country")):
     with Session(engine) as session:
         if country_name and year:
-            print_year_country_seasons(session, year, country_name)
+            # Display Seasons for a Year and Country
+            print_seasons_year_country(session, year, country_name)
             return
         if competition_name:
-            print_comp_seasons(session, competition_name)
-            return
-        if year:
-            print_year_seasons(session, year)
+            # Display Seasons for a Competition
+            print_seasons_comp(session, competition_name)
             return
         if country_name:
-            print_country_seasons(session, country_name)
+            # Display Seasons for a Country
+            print_seasons_country(session, country_name)
+            return
+        if year:
+            # Display Seasons for a Year
+            print_seasons_year(session, year)
             return
         else:
+            # Display all Seasons
             print_seasons(session)
+
+
+# Show Standings function
+@app.command()
+def show_standings(competition_name: str, year: int):
+    with Session(engine) as session:
+        print_standings_table(session, competition_name, year)
+
 
 # Show Teams
 @ app.command()
@@ -128,7 +185,7 @@ def show_teams(competition_name: Optional[str] = typer.Option(None, "--competiti
     with Session(engine) as session:
         if national:
             # Display all National Teams
-            print_national_teams(session)
+            print_teams_national(session)
             return
         if competition_name and year:
             # Display Teams for a Season (Competition and Year) (Works for both Club and National)
@@ -150,29 +207,9 @@ def show_teams(competition_name: Optional[str] = typer.Option(None, "--competiti
             # Display all Teams
             print_teams(session)
 
+
 # Show Venues
 
-
-# Show Standings function
-@app.command()
-def show_standings(competition_name: str, year: int):
-    with Session(engine) as session:
-        print_standings_table(session, competition_name, year)
-
-# Show Fixtures function
-@app.command()
-def show_fixtures(competition_name: str, year: int, team_name: Optional[str] = typer.Argument(None)):
-    with Session(engine) as session:
-        if team_name:
-            print_team_fixtures(session, competition_name, year, team_name)
-        else:
-            print_fixtures(session, competition_name, year)
-
-# Show Fixture Stats function
-@app.command()
-def show_fixture_stats(competition_name: str, year: int, team_name1: str, team_name2: str):
-    with Session(engine) as session:
-        print_fixture_stats(session, competition_name, year, team_name1, team_name2)
 
 
 # Run App
