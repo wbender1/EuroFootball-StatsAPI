@@ -99,7 +99,7 @@ class Fixture(SQLModel, table=True):
     season_id: int = Field(foreign_key="season.id") # Many-to-one
     home_team_id: int = Field(foreign_key="team.team_api_id") # Many-to-one
     away_team_id: int = Field(foreign_key="team.team_api_id") # Many-to-one
-    venue_id: int = Field(foreign_key="venue.venue_api_id") # Many-to-one
+    venue_id: Optional[int] = Field(default=None, foreign_key="venue.venue_api_id") # Many-to-one
     competition_id: int = Field(foreign_key="competition.comp_api_id") # Many-to-one
     referee: Optional[str] = Field(default=None)
     date: datetime

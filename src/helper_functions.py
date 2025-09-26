@@ -1,12 +1,16 @@
+# Import libraries
 from sqlmodel import Session, select, or_
-from api_request import api_request
-from display_utils import print_standings_table
-from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats, TeamSeasonCompetition
-
 from rich.progress import track
 from rich.console import Console
 from datetime import datetime
+from tabulate import tabulate
 import time
+
+# Import Models
+from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats, TeamSeasonCompetition
+
+# Import Functions
+from api_request import api_request
 
 console = Console()
 
@@ -247,10 +251,6 @@ def fetch_standings(session: Session, season: Season, competition: Competition):
     else:
         console.print(f'No new standings were added!', style="bold red")
 
-    # Print Standings table
-    console.print(f'Displaying standings for {season.year} season.', style="bold green")
-    print_standings_table(session, competition.comp_name, season.year)
-
 
 # Fetch Fixtures
 def fetch_fixtures(session: Session, season: Season, competition: Competition):
@@ -267,6 +267,27 @@ def fetch_fixtures(session: Session, season: Season, competition: Competition):
     for entry in track(fixtures_response, description="Processing Fixtures."):
         fixture_id = entry['fixture']['id']
         fixture_data = entry['fixture']
+        venue_stmt = select(Venue).where(Venue.venue_api_id == fixture_data['venue']['id'])
+        venue = session.exec(venue_stmt).first()
+        if not venue:
+            # Create Venue
+            country_stmt = select(Country).where(Country.country_name == entry['league']['country'])
+            country = session.exec(country_stmt).first()
+            if fixture_data['venue']['id']:
+                venue = Venue(
+                    venue_api_id=fixture_data['venue']['id'],
+                    name=fixture_data['venue']['name'],
+                    address=None,
+                    city=fixture_data['venue']['city'],
+                    country=entry['league']['country'],
+                    country_id=country.id,
+                    capacity=None,
+                    surface=None,
+                    image=None
+                )
+                session.add(venue)
+                session.commit()
+                console.print(f'Created new venue: {venue.name}.', style="green")
         # Find or create the Fixture
         fixture_stmt = select(Fixture).where(Fixture.id == fixture_id)
         fixture = session.exec(fixture_stmt).first()
@@ -277,7 +298,7 @@ def fetch_fixtures(session: Session, season: Season, competition: Competition):
                 season_id=season.id,
                 home_team_id=entry['teams']['home']['id'],
                 away_team_id=entry['teams']['away']['id'],
-                venue_id=entry['fixture']['venue']['id'],
+                venue_id=fixture_data['venue']['id'],
                 competition_id=competition.comp_api_id,
                 referee=fixture_data['referee'],
                 date=datetime.fromisoformat(fixture_data['date']),
@@ -420,16 +441,14 @@ def fetch_fixture_stats_team(session: Session, year: int, team_name: str):
                     **{f"away_{k}": v for k, v in away.items()}
                 )
                 new_fix_stats.append(fixture_instance)
-                if len(new_fix_stats) > 1:
-                    break
         if new_fix_stats:
             session.add_all(new_fix_stats)
             session.commit()
             console.print(f'{len(new_fix_stats)} new fixture statistics were added!', style="bold green")
         else:
-            console.print(f'No new fixture statistics were added!', style="bold red")
+            console.print(f'No new fixture statistics were added for {comp.comp_name}!', style="bold red")
 
-
+# Fetch Fixture Statistics for one Team for one Season (Competition and Year)
 def fetch_fixture_stats_team_season(session: Session, year: int, team_name: str, competition_name: str):
     # Find League ID
     competition_stmt = select(Competition).where(Competition.comp_name == competition_name)
@@ -485,13 +504,52 @@ def fetch_fixture_stats_team_season(session: Session, year: int, team_name: str,
                 **{f"away_{k}": v for k, v in away.items()}
             )
             new_fix_stats.append(fixture_instance)
-            if len(new_fix_stats) > 1:
-                break
     if new_fix_stats:
         session.add_all(new_fix_stats)
         session.commit()
         console.print(f'{len(new_fix_stats)} new fixture statistics were added!', style="bold green")
     else:
-        console.print(f'No new fixture statistics were added!', style="bold red")
+        console.print(f'No new fixture statistics were added for {competition_name}!', style="bold red")
 
-
+# Make Fixture Stats Table
+def make_fix_stats_table(fixtures):
+    headers = [
+        "Match Day", "Date", "Home Team", "Away Team", "Referee", "Venue"
+    ]
+    for fixture, home_team_name, away_team_name, venue, fixturestats in fixtures:
+        data = []
+        round_str = fixture.round
+        matchday_num = int(round_str.split(" - ")[-1])
+        data.append([
+            matchday_num,
+            fixture.date,
+            home_team_name,
+            away_team_name,
+            fixture.referee,
+            venue.name
+        ])
+        console.print(f"\n[bold]Fixture stats for[/bold] [green]{home_team_name}[/green] "
+                      f" [bold]vs.[/bold] [green]{away_team_name}[/green] "
+                      f"[bold]on[/bold] [green]{fixture.date}[/green]")
+        print(tabulate(data, headers=headers, tablefmt="pretty"))
+        stats = []
+        headers_stats = [f'{home_team_name}', '', f'{away_team_name}']
+        stats.append([fixture.home_goals, "GOALS", fixture.away_goals])
+        stats.append([fixturestats.home_ex_goals, "EXPECTED GOALS", fixturestats.away_ex_goals])
+        stats.append([fixturestats.home_sh_on_goal, "SHOTS ON GOAL", fixturestats.away_sh_on_goal])
+        stats.append([fixturestats.home_sh_off_goal, "SHOTS OFF GOAL", fixturestats.away_sh_off_goal])
+        stats.append([fixturestats.home_total_sh, "TOTAL SHOTS", fixturestats.away_total_sh])
+        stats.append([fixturestats.home_blocked_sh, "BLOCKED SHOTS", fixturestats.away_blocked_sh])
+        stats.append([fixturestats.home_sh_inside, "SHOTS INSIDE BOX", fixturestats.away_sh_inside])
+        stats.append([fixturestats.home_sh_outside, "SHOTS OUTSIDE BOX", fixturestats.away_sh_outside])
+        stats.append([fixturestats.home_fouls, "FOULS", fixturestats.away_fouls])
+        stats.append([fixturestats.home_corners, "CORNERS", fixturestats.away_corners])
+        stats.append([fixturestats.home_offsides, "OFFSIDES", fixturestats.away_offsides])
+        stats.append([fixturestats.home_possession, "BALL POSSESSION", fixturestats.away_possession])
+        stats.append([fixturestats.home_yellows, "YELLOW CARDS", fixturestats.away_yellows])
+        stats.append([fixturestats.home_reds, "RED CARDS", fixturestats.away_reds])
+        stats.append([fixturestats.home_saves, "SAVES", fixturestats.away_saves])
+        stats.append([fixturestats.home_tot_passes, "TOTAL PASSES", fixturestats.away_tot_passes])
+        stats.append([fixturestats.home_accurate_pass, "ACCURATE PASSES", fixturestats.away_accurate_pass])
+        stats.append([fixturestats.home_percent_pass, "PASSING %", fixturestats.away_percent_pass])
+        print(tabulate(stats, headers=headers_stats, tablefmt="pretty"))

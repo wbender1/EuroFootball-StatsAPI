@@ -1,18 +1,23 @@
 # Import libraries
-from typing import Optional
-
-import typer
-from sqlmodel import Session, select, delete, SQLModel, or_, and_
-import requests, json
+from database import engine
+from datetime import datetime
 from rich.console import Console
 from rich.progress import track
-from datetime import datetime
-import time
+from sqlmodel import Session, select, delete, SQLModel, or_, and_
 from tabulate import tabulate
+from typing import Optional
+import requests, json
+import time
+import typer
 
-# Import modules
+# Import Models
 from models import Country, Competition, Venue, Team, Season, Standing, Fixture, FixtureStats
-# Import print functions
+
+# Import Functions
+from api_request import api_request
+from helper_functions import (make_country, fetch_competitions, fetch_teams, fetch_venues,
+                              make_season, fetch_standings, fetch_fixtures, make_meta_join_table,
+                              fetch_fixture_stats_team, fetch_fixture_stats_team_season)
 from display_utils import (print_comps, print_comps_country, print_comps_country_type, print_comps_type,
                            print_countries,
                            print_fixtures_season, print_fixtures_season_team,
@@ -21,14 +26,10 @@ from display_utils import (print_comps, print_comps_country, print_comps_country
                            print_standings_table,
                            print_teams, print_teams_country, print_teams_competition, print_teams_year, print_teams_season,
                            print_teams_national,
-                           print_venues, print_venues_country, print_venues_season)
-from database import engine
-import config
-from api_request import api_request
+                           print_venues, print_venues_country, print_venues_competition, print_venues_year, print_venues_season)
 
-from helper_functions import (make_country, fetch_competitions, fetch_teams, fetch_venues,
-                              make_season, fetch_standings, fetch_fixtures, make_meta_join_table,
-                              fetch_fixture_stats_team, fetch_fixture_stats_team_season)
+# Import API Key
+import config
 
 # Create Typer app and console
 app = typer.Typer()
@@ -41,7 +42,12 @@ def init_db():
     SQLModel.metadata.create_all(engine)
     console.print("Database tables created!", style="green")
 
+#****************************************************************************************************#
+
 #**********************************     Fetch Data Functions    *************************************#
+
+#****************************************************************************************************#
+
 # Fetch Country
 @app.command()
 def fetch_country(input_country_name: str):
@@ -83,13 +89,19 @@ def fetch_season(competition_name: str, year: int):
 def fetch_fixture_stats(year: int, team_name: str, competition_name: Optional[str] = typer.Argument(None)):
     with Session(engine) as session:
         if competition_name:
+            # Fetch Fixture Statistics for one Team for one Season (Competition and Year)
             fetch_fixture_stats_team_season(session, year, team_name, competition_name)
             return
         else:
+            # Fetch Fixture Statistics for one Team for all Competitions in a Year
             fetch_fixture_stats_team(session, year, team_name)
 
+#****************************************************************************************************#
 
 #**********************************     Show Data Functions     *************************************#
+
+#****************************************************************************************************#
+
 # Show Competitions
 @ app.command()
 def show_competitions(country_name: Optional[str] = typer.Option(None, "--country", "-c"),
@@ -125,9 +137,11 @@ def show_countries():
 def show_fixtures(competition_name: str, year: int, team_name: Optional[str] = typer.Argument(None)):
     with Session(engine) as session:
         if team_name:
+            # Display All Fixtures of one Team for a Season
             print_fixtures_season_team(session, competition_name, year, team_name)
             return
         else:
+            # Display All Fixtures for a Season
             print_fixtures_season(session, competition_name, year)
 
 
@@ -137,8 +151,10 @@ def show_fixture_stats(competition_name: str, year: int,
                        team_name1: str, team_name2: Optional[str] = typer.Argument(None)):
     with Session(engine) as session:
         if team_name2:
+            # Display Fixture Statistics for two Teams in a Season
             print_fixture_stats_two_teams(session, competition_name, year, team_name1, team_name2)
         else:
+            # Display Fixture Statistics for one Team in a Season
             print_fixture_stats_team(session, competition_name, year, team_name1)
 
 
@@ -173,11 +189,12 @@ def show_seasons(competition_name: Optional[str] = typer.Option(None, "--competi
 @app.command()
 def show_standings(competition_name: str, year: int):
     with Session(engine) as session:
+        # Display Standings for a season
         print_standings_table(session, competition_name, year)
 
 
 # Show Teams
-@ app.command()
+@app.command()
 def show_teams(competition_name: Optional[str] = typer.Option(None, "--competition", "-c"),
                  year: Optional[int] = typer.Option(None, "--year", "-y"),
                  country_name: Optional[str] = typer.Option(None, "--country"),
@@ -209,6 +226,30 @@ def show_teams(competition_name: Optional[str] = typer.Option(None, "--competiti
 
 
 # Show Venues
+@app.command()
+def show_venues(competition_name: Optional[str] = typer.Option(None, "--competition", "-c"),
+                 year: Optional[int] = typer.Option(None, "--year", "-y"),
+                 country_name: Optional[str] = typer.Option(None, "--country"),):
+    with Session(engine) as session:
+        if competition_name and year:
+            # Display Venues for a Season (Competition and Year)
+            print_venues_season(session, competition_name, year)
+            return
+        if year:
+            # Display all Venues for a Year
+            print_venues_year(session, year)
+            return
+        if competition_name:
+            # Display all Venues for a Competition
+            print_venues_competition(session, competition_name)
+            return
+        if country_name:
+            # Display all Venues for a Country
+            print_venues_country(session, country_name)
+            return
+        else:
+            # Display all Venues
+            print_venues(session)
 
 
 
