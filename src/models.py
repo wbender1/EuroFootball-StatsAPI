@@ -1,6 +1,4 @@
 # Import libraries
-from markdown_it.rules_block import table
-from sqlalchemy import Boolean
 from sqlmodel import SQLModel, Field, UniqueConstraint
 from typing import Optional
 from datetime import datetime
@@ -10,8 +8,8 @@ class Country(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     country_name: str = Field(unique=True)
     num_comps: int
-    code: str
-    flag: str
+    code: Optional[str] = Field(default=None)
+    flag: Optional[str] = Field(default=None)
 
 # Define Competition Model, links to Country
 class Competition(SQLModel, table=True):

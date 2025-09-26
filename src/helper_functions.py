@@ -73,9 +73,9 @@ def fetch_competitions(session: Session, input_country_name: str):
     if new_comps:
         session.add_all(new_comps)
         session.commit()
-        console.print(f'Successfully added {len(new_comps)} venues!', style="bold green")
+        console.print(f'Successfully added {len(new_comps)} competitions!', style="bold green")
     else:
-        console.print(f'No new venues were added!', style="bold red")
+        console.print(f'No new competitions were added!', style="bold red")
 
     return len(new_comps)
 
@@ -116,9 +116,9 @@ def fetch_teams(session: Session, input_country_name: str):
     if new_teams:
         session.add_all(new_teams)
         session.commit()
-        console.print(f'Successfully added {len(new_teams)} venues!', style="bold green")
+        console.print(f'Successfully added {len(new_teams)} teams!', style="bold green")
     else:
-        console.print(f'No new venues were added!', style="bold red")
+        console.print(f'No new teams were added!', style="bold red")
 
     return len(new_teams)
 
